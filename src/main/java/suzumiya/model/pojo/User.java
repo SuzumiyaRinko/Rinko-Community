@@ -18,19 +18,30 @@ import java.util.stream.Collectors;
 @TableName("sys_user")
 @Data
 public class User implements UserDetails {
-
+    // 自增id
     @TableId(type = IdType.AUTO)
-    private Long id; // 自增id
+    private Long id;
+    // 账号（邮箱）
     private String username;
+    // 密码
     private String password;
-    private String nickname; // 用户昵称
+    // 用户昵称
+    private String nickname;
+    // 密码盐
     private String salt;
-    private Integer gender; // 0:男 1:女
-    private Integer activation; // 0:未激活 1:激活
+    // 性别 0:男 1:女
+    private Integer gender;
+    // 当前激活状态 0:未激活 1:激活
+    private Integer activation;
+    // 激活时的UUID
     @TableField("activation_UUID")
     private String activationUUID;
+    // 头像路径
+    private String avatar;
+    // 创建时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
+    // 修改时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
 
@@ -40,7 +51,7 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if(authoritiesStr == null) {
+        if (authoritiesStr == null) {
             return null;
         }
         return authoritiesStr.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
