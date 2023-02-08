@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="suzumiya.mapper.UserMapper">
+    <sql id="BASE_COLUMNS">
+        id, username, password, nickname, salt, gender, activation, create_time, update_time
+    </sql>
+
+    <resultMap id="getUserByIdResultMap" type="User">
+        <association property="authoritiesStr" select="suzumiya.mapper.UserMapper.getAuthoritiesStrByUserId"
+                     column="userId=id"/>
+    </resultMap>
+
+    <!-- User getUserById(Long userId) -->
+    <select id="getUserById" resultType="User" resultMap="getUserByIdResultMap">
+        SELECT
+        <include refid="BASE_COLUMNS"/>
+        FROM sys_user WHERE id = #{userId}
+    </select>
+    <!-- List<String> getAuthoritiesStrByUserId(Long userId) -->
+    <select id="getAuthoritiesStrByUserId" resultType="java.lang.String">
+        SELECT a.authority FROM sys_user_role ur
+        JOIN sys_role_authority ra
+        ON ur.role_id = ra.role_id
+        JOIN sys_authority a
+        ON ra.authority_id = a.id
+        WHERE user_id = #{userId};
+    </select>
+</mapper>
