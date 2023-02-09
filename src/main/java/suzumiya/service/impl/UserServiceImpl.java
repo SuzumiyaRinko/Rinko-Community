@@ -7,8 +7,6 @@ import cn.hutool.jwt.JWTUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.amqp.core.Message;
-import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -33,7 +31,6 @@ import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.service.IUserService;
 import suzumiya.service.IVerifyService;
-import suzumiya.util.MailUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -76,7 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         /* 查询用户信息 */
-        return this.getOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
+        return userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
     }
 
     @Override
@@ -98,8 +95,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         /* 生成Authentication对象，让SS做校验 */
         // 获取当前用户的salt
-        // username为null不会抛异常，且checkStrValidation会判null
-        User existedUser = this.getOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user.getUsername()));
+        // username为null不会抛异常
+        User existedUser = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user.getUsername()));
         // 判断账号不存在
         if (existedUser == null) {
             throw new RuntimeException("该账号不存在");
@@ -169,13 +166,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         /* 判断注册的账号密码是否符合要求 */
-        if (!verifyService.checkStrValidation(userRegisterDTO.getUsername(), null, 40, CommonConst.REGEX_EMAIL)
-                || !verifyService.checkStrValidation(userRegisterDTO.getPassword(), 8, 16, CommonConst.REGEX_PASSWORD)) {
+        String username = userRegisterDTO.getUsername();
+        String password = userRegisterDTO.getPassword();
+        if (username != null && username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD)) {
             throw new RuntimeException("账号或密码不符合要求");
         }
 
         /* 判断当前用户名是否已经存在 */
-        User existedUser = this.getOne(new LambdaQueryWrapper<User>().eq(User::getUsername, userRegisterDTO.getUsername()));
+        User existedUser = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, userRegisterDTO.getUsername()));
         if (existedUser != null) {
             throw new RuntimeException("当前用户名已存在");
         }
@@ -214,7 +212,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         response.setCharacterEncoding("utf-8");
 
         /* 判断该账号是否存在 */
-        User existedUser = this.getOne(new LambdaQueryWrapper<User>().eq(User::getActivationUUID, uuid));
+        User existedUser = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getActivationUUID, uuid));
         if (existedUser == null) {
             throw new RuntimeException("该账号不存在");
         }
@@ -239,8 +237,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         User tt = new User();
         tt.setId((long) userId);
         tt.setActivation(1);
-        boolean result = this.updateById(tt);
-        if (result) {
+        int result = userMapper.updateById(tt);
+        if (result == 1) {
             redisTemplate.delete(RedisConst.ACTIVATION_USER_KEY + uuid);
             response.getWriter().print(CommonConst.HTML_ACTIVATION_SUCCESS
                     .replaceAll("<xxxxx>", existedUser.getUsername())

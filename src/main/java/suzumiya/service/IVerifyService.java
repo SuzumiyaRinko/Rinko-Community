@@ -7,6 +7,4 @@ import java.io.IOException;
 public interface IVerifyService {
 
     VerifyCodeVO getVerifyCode() throws IOException;
-
-    boolean checkStrValidation(String str, Integer minLen, Integer maxLen, String regex);
 }

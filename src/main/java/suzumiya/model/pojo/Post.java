@@ -2,6 +2,7 @@ package suzumiya.model.pojo;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.Document;
@@ -17,18 +18,17 @@ public class Post {
     // 主键
     @TableId(type = IdType.AUTO)
     @Id
-    private Integer id;
+    private Long id;
     // 发帖的用户id
     @Field(type = FieldType.Long)
     private Long userId;
     // 标题
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String title;
-    // Tag标签（最大值是2^31-1，所以可以表示31个tag）
-    @Field(type = FieldType.Integer)
+    // Tag标签（最大值是2^31-1，所以可以表示31个tag，二进制从左往右读）
     private Integer tags;
     // 内容
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
     // 是否置顶 0:否 1:是
     @Field(type = FieldType.Integer)
@@ -41,7 +41,6 @@ public class Post {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
     // 修改时间
-    @Field(type = FieldType.Date)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
     // 是否逻辑删除
@@ -49,7 +48,17 @@ public class Post {
     @Field(type = FieldType.Integer)
     private Integer isDelete;
 
+    // tag数组
+    @Field(type = FieldType.Integer)
+    @TableField(exist = false)
+    private Integer[] tagIDs;
     // 获取完整的tag名字
     @TableField(exist = false)
     private String[] tagsStr;
+
+    // 用于搜索的字段
+    @JsonIgnore
+    @TableField(exist = false)
+    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", ignoreFields = "all", excludeFromSource = true)
+    private String searchField;
 }

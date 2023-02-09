@@ -1,4 +1,4 @@
-package suzumiya.model.vo;//package suzumiya.model.vo;
+//package suzumiya.model.vo;
 //
 //import lombok.Data;
 //import suzumiya.model.pojo.HotelDoc;

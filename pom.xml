@@ -146,6 +146,12 @@
             <artifactId>hutool-all</artifactId>
             <version>5.8.11</version>
         </dependency>
+        <!-- IK分词器 -->
+        <!--        <dependency>-->
+        <!--            <groupId>com.janeluo</groupId>-->
+        <!--            <artifactId>ikanalyzer</artifactId>-->
+        <!--            <version>2012_u6</version>-->
+        <!--        </dependency>-->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

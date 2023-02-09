@@ -1,17 +1,15 @@
 package suzumiya;
 
-import cn.hutool.extra.spring.SpringUtil;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 import javax.annotation.PostConstruct;
 
 @SpringBootApplication
 @MapperScan(basePackages = "suzumiya.mapper")
-// @EnableElasticsearchRepositories(basePackages = "suzumiya.repository")
+//@EnableElasticsearchRepositories(basePackages = "suzumiya.repository")
 @EnableAspectJAutoProxy(exposeProxy = true)
 public class Application {
 

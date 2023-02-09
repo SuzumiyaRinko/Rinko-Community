@@ -1,32 +1,26 @@
 package suzumiya.mq;
 
-import cn.hutool.core.lang.UUID;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.impl.AMQImpl;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
-import suzumiya.mapper.UserMapper;
+import suzumiya.mapper.PostMapper;
+import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
+import suzumiya.repository.PostRepository;
 import suzumiya.util.MailUtils;
+import suzumiya.util.WordTreeUtils;
 
-import javax.annotation.Resource;
 import javax.mail.MessagingException;
-import javax.servlet.http.HttpServletRequest;
-import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -37,13 +31,13 @@ public class MQConsumer {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    @Resource
-    private RabbitTemplate rabbitTemplate;
+    @Autowired
+    private PostMapper postMapper;
 
     @Autowired
-    private UserMapper userMapper;
+    private PostRepository postRepository;
 
-    // 监听用户注册接口
+    /* 监听用户注册接口 */
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(name = MQConstant.USER_REGISTER_QUEUE),
             exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
@@ -59,10 +53,45 @@ public class MQConsumer {
 
         /* 30mins激活时间 */
         redisTemplate.opsForValue().set(RedisConst.ACTIVATION_USER_KEY + newUser.getActivationUUID(), newUser.getId(), 30L, TimeUnit.MINUTES); // 30mins
-//        Message message = MessageBuilder.withBody(uuid.getBytes(StandardCharsets.UTF_8)).setHeader("x-delay", 1000 * 60 * 30).build(); // 30mins
-//        rabbitTemplate.convertAndSend(MQConstant.DELAY_DIRECT, MQConstant.ACTIVATION_KEY, message);
 
         log.debug("正在注册 username={} ", newUser.getUsername());
+    }
+
+    /* 监听Post新增接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.POST_INSERT_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.POST_INSERT_KEY}
+    ))
+    public void listenPostInsertQueue(Post post) {
+        /* 过滤敏感词 */
+        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(post.getTitle()));
+        post.setContent(WordTreeUtils.replaceAllSensitiveWords(post.getContent()));
+
+        /* 新增post到MySQL */
+        // 把tagIDs转换为tags
+        Integer[] tagIDs = post.getTagIDs();
+        Arrays.sort(tagIDs);
+        int curr = 1;
+        StringBuilder sb = new StringBuilder();
+        for (Integer tagID : tagIDs) {
+            while (tagID > curr) {
+                sb.append("0");
+                curr++;
+            }
+            sb.append("1");
+        }
+        post.setTags(Integer.parseInt(sb.toString(), 2));
+        // 新增post到MySQL
+        postMapper.insert(post);
+
+        /* 新增post到ES */
+        postRepository.save(post);
+
+        /* 添加到带算分Post的Set集合 */
+        redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, post.getId());
+
+        log.debug("正在新增帖子 title={} ", post.getTitle());
     }
 
     // DelayQueue：监听用户激活时间是否结束

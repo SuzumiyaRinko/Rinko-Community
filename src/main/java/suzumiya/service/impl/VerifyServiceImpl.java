@@ -1,9 +1,7 @@
 package suzumiya.service.impl;
 
 import cn.hutool.core.codec.Base64Encoder;
-import cn.hutool.core.util.StrUtil;
 import com.google.code.kaptcha.impl.DefaultKaptcha;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CommonConst;
 import suzumiya.model.vo.VerifyCodeVO;
@@ -14,8 +12,6 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class VerifyServiceImpl implements IVerifyService {
@@ -38,23 +34,5 @@ public class VerifyServiceImpl implements IVerifyService {
         verifyCodeVO.setBase64Img(base64Img);
 
         return verifyCodeVO;
-    }
-
-    @Override
-    public boolean checkStrValidation(String str, Integer minLen, Integer maxLen, String regex) {
-        if(StrUtil.isBlank(str)) {
-            return false;
-        }
-        if(minLen != null && str.length() < minLen) {
-            return false;
-        }
-        if(maxLen != null && str.length() > maxLen) {
-            return false;
-        }
-        if(!StrUtil.isBlank(regex)) {
-            return str.matches(regex);
-        }
-
-        return true;
     }
 }

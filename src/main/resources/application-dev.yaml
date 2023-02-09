@@ -44,6 +44,7 @@ mybatis-plus:
 #  mapper-locations: suzumiya/mapper
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   type-aliases-package: suzumiya.model.pojo
 
 ftp:

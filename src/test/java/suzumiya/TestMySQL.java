@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.pojo.User;
+import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -22,6 +23,9 @@ public class TestMySQL {
 
     @Autowired
     private IUserService userService;
+
+    @Autowired
+    private IPostService postService;
 
     @Test
     void testMySQL() {
@@ -46,5 +50,11 @@ public class TestMySQL {
         user.setId(1622138408061227009L);
         user.setNickname("okokok");
         userService.updateById(user);
+    }
+
+    // 测试逻辑删除
+    @Test
+    void testTableLogic() {
+//        System.out.println(.getById(5));
     }
 }
