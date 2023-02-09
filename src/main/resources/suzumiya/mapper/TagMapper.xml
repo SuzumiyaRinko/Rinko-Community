@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="suzumiya.mapper.TagMapper">
+    <resultMap id="getAllNameByTagIDs" type="User">
+        <association property="authoritiesStr" select="suzumiya.mapper.UserMapper.getAuthoritiesStrByUserId"
+                     column="userId=id"/>
+    </resultMap>
+
+    <!-- List<String> getAllNameByTagIDs(List<Integer> tagIDs) -->
+    <select id="getAllNameByTagIDs" resultType="java.lang.String">
+        SELECT name
+        FROM tb_tag WHERE id IN
+        <foreach collection="tagIDs" item="tagID" separator="," open="(" close=")">
+            #{tagID}
+        </foreach>
+    </select>
+</mapper>

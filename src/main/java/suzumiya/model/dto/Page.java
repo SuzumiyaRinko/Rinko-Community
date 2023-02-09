@@ -1,4 +1,4 @@
-package suzumiya.model.pojo;
+package suzumiya.model.dto;
 
 import lombok.Data;
 

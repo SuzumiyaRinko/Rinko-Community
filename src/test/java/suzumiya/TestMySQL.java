@@ -6,10 +6,13 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.pojo.User;
 import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
+
+import java.util.List;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -26,6 +29,9 @@ public class TestMySQL {
 
     @Autowired
     private IPostService postService;
+
+    @Autowired
+    private TagMapper tagMapper;
 
     @Test
     void testMySQL() {
@@ -56,5 +62,11 @@ public class TestMySQL {
     @Test
     void testTableLogic() {
 //        System.out.println(.getById(5));
+    }
+
+    @Test
+    void testTagMapper() {
+        List<String> names = tagMapper.getAllNameByTagIDs(List.of(1, 2, 4));
+        System.out.println(names);
     }
 }

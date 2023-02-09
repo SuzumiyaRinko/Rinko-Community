@@ -20,7 +20,7 @@ import suzumiya.util.MailUtils;
 import suzumiya.util.WordTreeUtils;
 
 import javax.mail.MessagingException;
-import java.util.Arrays;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -70,19 +70,15 @@ public class MQConsumer {
 
         /* 新增post到MySQL */
         // 把tagIDs转换为tags
-        Integer[] tagIDs = post.getTagIDs();
-        Arrays.sort(tagIDs);
-        int curr = 1;
-        StringBuilder sb = new StringBuilder();
+        List<Integer> tagIDs = post.getTagIDs();
+        int tags = 0;
         for (Integer tagID : tagIDs) {
-            while (tagID > curr) {
-                sb.append("0");
-                curr++;
-            }
-            sb.append("1");
+            tags += Math.pow(2, tagID - 1);
         }
-        post.setTags(Integer.parseInt(sb.toString(), 2));
+        post.setTags(tags);
         // 新增post到MySQL
+        post.setCreateTime(LocalDateTime.now());
+        post.setUpdateTime(LocalDateTime.now());
         postMapper.insert(post);
 
         /* 新增post到ES */

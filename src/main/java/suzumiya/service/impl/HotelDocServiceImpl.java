@@ -28,7 +28,7 @@ package suzumiya.service.impl;//package suzumiya.service.impl;
 //import org.springframework.stereotype.Service;
 //import suzumiya.model.dto.HotelSearchDTO;
 //import suzumiya.model.pojo.HotelDoc;
-//import suzumiya.model.pojo.Page;
+//import suzumiya.model.dto.Page;
 //import suzumiya.model.vo.HotelSearchVO;
 //import suzumiya.service.IHotelDocService;
 //

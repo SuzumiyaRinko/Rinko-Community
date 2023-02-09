@@ -20,6 +20,9 @@ spring:
     listener:
       simple:
         prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
     publisher-returns: true
   elasticsearch:
     uris: http://192.168.66.150:9200

@@ -9,12 +9,14 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @TableName("tb_post")
 @Document(indexName = "post")
 @Data
-public class Post {
+public class Post implements Serializable {
     // 主键
     @TableId(type = IdType.AUTO)
     @Id
@@ -36,8 +38,8 @@ public class Post {
     // 用于做热度排序的分数
     @Field(type = FieldType.Double)
     private Double score;
-    // 创建时间
-    @Field(type = FieldType.Date)
+    // 创建时间（必须要写 format = {}）
+    @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
     // 修改时间
@@ -51,10 +53,10 @@ public class Post {
     // tag数组
     @Field(type = FieldType.Integer)
     @TableField(exist = false)
-    private Integer[] tagIDs;
+    private List<Integer> tagIDs;
     // 获取完整的tag名字
     @TableField(exist = false)
-    private String[] tagsStr;
+    private List<String> tagsStr;
 
     // 用于搜索的字段
     @JsonIgnore

@@ -2,10 +2,12 @@ package suzumiya.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import suzumiya.model.pojo.Page;
+import suzumiya.model.dto.PostSearchDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.BaseResponse;
+import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
+import suzumiya.util.ResponseGenerator;
 
 @RestController
 @RequestMapping("/post")
@@ -20,9 +22,8 @@ public class PostController {
     }
 
     @GetMapping("/search")
-    public BaseResponse<Page<Post>> search() {
-
-        return null;
+    public BaseResponse<PostSearchVO> search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
+        PostSearchVO postSearchVO = postService.search(postSearchDTO);
+        return ResponseGenerator.returnOK("查询post成功", postSearchVO);
     }
-
 }
