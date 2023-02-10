@@ -69,4 +69,9 @@ public class TestMySQL {
         List<String> names = tagMapper.getAllNameByTagIDs(List.of(1, 2, 4));
         System.out.println(names);
     }
+
+    @Test
+    void testUserMapper() {
+        System.out.println(Boolean.TRUE.equals(userMapper.getIsFamousByUserId(114514L)));
+    }
 }

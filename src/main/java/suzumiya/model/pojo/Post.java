@@ -51,7 +51,7 @@ public class Post implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
     // 是否逻辑删除
-    @Field(type = FieldType.Boolean)
+    @Field(type = FieldType.Boolean, index = false)
     @TableLogic
     private Boolean isDelete = false;
 

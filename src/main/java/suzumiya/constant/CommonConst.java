@@ -7,6 +7,7 @@ public class CommonConst {
     public static final String USER_LOGIN_URL = "#";
     public static final String USER_REGISTER_URL = "#";
     public static final String MAIL_FROM = "Txz2018911711@163.com";
+    public static final Integer STANDARD_PAGE_SIZE = 10;
 
     /* 普通常量 */
     public static final String PREFIX_BASE64IMG = "data:image/jpeg;base64,";

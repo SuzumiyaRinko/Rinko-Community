@@ -31,19 +31,26 @@ import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilde
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CacheConst;
+import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.Page;
+import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
+import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
+import suzumiya.util.IKAnalyzerUtils;
+import suzumiya.util.WordTreeUtils;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
@@ -66,40 +73,111 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Autowired
     private TagMapper tagMapper;
 
+    @Autowired
+    private PostMapper postMapper;
+
     // 聚合相关
     private final String[] aggsNames = {"tagAggregation"};
     private final String[] aggsFieldNames = {"tagIDs"};
     private final String[] aggsResultNames = {"标签"};
 
     @Override
-    public void insert(Post post) {
+    public void insert(PostInsertDTO postInsertDTO) {
         /* 判断标题和内容长度 */
-        if (post.getTitle().length() > 40 || post.getContent().length() > 10000) {
+        if (postInsertDTO.getTitle().length() > 40 || postInsertDTO.getContent().length() > 10000) {
             throw new RuntimeException("标题或内容长度超出限制");
         }
 
-        /* 过滤敏感词（异步） */
-        /* 新增post到MySQL（异步） */
-        /* 新增post到ES（异步） */
+        Post post = new Post();
+
+        /* 过滤敏感词 */
+        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
+        post.setContent(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
+
+        /* 新增post到MySQL */
+        // 把tagIDs转换为tags
+        List<Integer> tagIDs = post.getTagIDs();
+        int tags = 0;
+        if (ObjectUtil.isNotEmpty(tagIDs)) {
+            for (Integer tagID : tagIDs) {
+                tags += Math.pow(2, tagID - 1);
+            }
+        }
+        post.setTags(tags);
+        // 新增post到MySQL
+
         //TODO 这两行代码不应该被注释掉
 //        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 //        post.setUserId(user.getId());
+        post.setUserId(1L); // 这行代码应该被注释掉
+
+        post.setCreateTime(LocalDateTime.now());
+        postMapper.insert(post);
+
+        /* 新增post到ES（异步） */
+        /* 添加到带算分Post的Set集合（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_INSERT_KEY, post);
+    }
+
+    @Override
+    public void delete(Long postId) {
+        /* 在MySQL把post逻辑删除（异步） */
+        postMapper.deleteById(postId);
+
+        /* 在ES把post逻辑删除（异步） */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
+    }
+
+    @Override
+    public void update(PostUpdateDTO postUpdateDTO) {
+        /* 判断标题和内容长度 */
+        if (postUpdateDTO.getTitle().length() > 40 || postUpdateDTO.getContent().length() > 10000) {
+            throw new RuntimeException("标题或内容长度超出限制");
+        }
+
+        /* 过滤敏感词 */
+        Post post = new Post();
+        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getTitle()));
+        post.setContent(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getContent()));
+
+        /* 在MySQL中更新post */
+        post.setId(postUpdateDTO.getPostId());
+
+        List<Integer> tagIDs = postUpdateDTO.getTagIDs();
+        int tags = 0;
+        if (ObjectUtil.isNotEmpty(tagIDs)) {
+            for (Integer tagID : tagIDs) {
+                tags += Math.pow(2, tagID - 1);
+            }
+        }
+        post.setTags(tags);
+
+        post.setTitle(postUpdateDTO.getTitle());
+        post.setContent(postUpdateDTO.getContent());
+        post.setTagIDs(postUpdateDTO.getTagIDs());
+        postMapper.updateById(post);
+
+        /* 在ES中更新post（异步） */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_UPDATE_KEY, post);
     }
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
         PostSearchVO postSearchVO = new PostSearchVO();
         Long userId = postSearchDTO.getUserId();
+        Integer sortType = postSearchDTO.getSortType();
+        Integer pageNum = postSearchDTO.getPageNum();
         String cacheKey = null;
         boolean isCache = false;
         boolean flag = false;
-        if (userId != null && userMapper.getIsFamousByUserId(userId)) {
-            cacheKey = CacheConst.CACHE_POST_KEY + postSearchDTO.getPageNum() + ":" + userId;
+
+        /* 判断isCache和cacheKey */
+        if (userId != null && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
             isCache = true;
+            cacheKey = CacheConst.CACHE_POST_KEY + pageNum + ":" + userId;
         } else if (userId == null) {
-            cacheKey = CacheConst.CACHE_POST_KEY + postSearchDTO.getPageNum();
             isCache = true;
+            cacheKey = CacheConst.CACHE_POST_KEY + pageNum + ":0:" + sortType;
         }
 
         if (isCache) {
@@ -133,9 +211,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             Map<String, Object> value = new HashMap<>();
             BeanUtil.beanToMap(postSearchVO, value, true, null);
             redisTemplate.opsForHash().putAll(cacheKey, value);
+            redisTemplate.expire(cacheKey, 30L, TimeUnit.MINUTES);
         } else {
             /* 查询ES */
-            // 根据HotelSearchDTO生成SearchQuery对象 */
+            // 根据HotelSearchDTO生成SearchQuery对象
             NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
             // 查询结果
             SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
@@ -146,14 +225,35 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         return postSearchVO;
     }
 
+    @Override
+    public List<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
+        PostSearchDTO postSearchDTO = new PostSearchDTO();
+        postSearchDTO.setSearchKey(searchKey);
+        postSearchDTO.setIsSuggestion(true);
+
+        // 根据HotelSearchDTO生成SearchQuery对象
+        NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
+        // 查询结果
+        SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
+        // 解析结果
+        PostSearchVO postSearchVO = parseSearchHits(postSearchDTO, searchHits);
+        return postSearchVO.getSuggestions();
+    }
+
     /* 生成SearchQuery对象 */
     private NativeSearchQuery getSearchQuery(PostSearchDTO postSearchDTO) {
         /* 创建Builder对象 */
         NativeSearchQueryBuilder builder = new NativeSearchQueryBuilder();
 
+        /* 联想搜索 */
+        if (Boolean.TRUE.equals(postSearchDTO.getIsSuggestion())) {
+            builder.withQuery(QueryBuilders.matchQuery("searchField", postSearchDTO.getSearchKey()));
+            builder.withPageable(PageRequest.of(0, CommonConst.STANDARD_PAGE_SIZE)); // ES的页数是从"0"开始算的
+            return builder.build();
+        }
+
         /* 构建bool查询 */
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-        boolQuery.must(QueryBuilders.termQuery("isDelete", false));
         // searchKey
         String searchKey = postSearchDTO.getSearchKey();
         if (StrUtil.isBlank(searchKey)) {
@@ -197,7 +297,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (pageNum == null || pageNum <= 0) {
             pageNum = 1;
         }
-        builder.withPageable(PageRequest.of(pageNum - 1, PostSearchDTO.PAGE_SIZE)); // ES的页数是从"0"开始算的
+        builder.withPageable(PageRequest.of(pageNum - 1, CommonConst.STANDARD_PAGE_SIZE)); // ES的页数是从"0"开始算的
 
         /* 构建高光 */
         builder.withHighlightFields(
@@ -217,17 +317,40 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     /* 解析结果 */
     private PostSearchVO parseSearchHits(PostSearchDTO postSearchDTO, SearchHits<Post> searchHits) throws NoSuchFieldException, IllegalAccessException {
+        /* 联想搜索 */
+        if (Boolean.TRUE.equals(postSearchDTO.getIsSuggestion())) {
+            List<String> parseList = IKAnalyzerUtils.parse(postSearchDTO.getSearchKey());
+            PostSearchVO postSearchVO = new PostSearchVO();
+            List<SearchHit<Post>> hits = searchHits.getSearchHits();
+            List<String> suggestions = new ArrayList<>();
+            for (SearchHit<Post> hit : hits) {
+                // 1 解析 _source
+                Post post = hit.getContent();
+                // 2 手动高光
+                String title = post.getTitle();
+                for (String word : parseList) {
+                    title = title.replaceAll(word, "<em>" + word + "</em>");
+                }
+                // 3 添加到suggestions
+                suggestions.add(title);
+            }
+            postSearchVO.setSuggestions(suggestions);
+            return postSearchVO;
+        }
+
         /* 解析查询结果 */
         int total = (int) searchHits.getTotalHits();
         List<SearchHit<Post>> hits = searchHits.getSearchHits();
         List<Post> postsResult = new ArrayList<>();
         for (SearchHit<Post> hit : hits) {
-            System.out.println(hit.getId() + " " + hit.getScore());
             // 1 解析 _source
             Post post = hit.getContent();
             // 2 tagIDs转tagsStr
-            List<String> tagsStr = tagMapper.getAllNameByTagIDs(post.getTagIDs());
-            post.setTagsStr(tagsStr);
+            List<Integer> tagIDs = post.getTagIDs();
+            if (ObjectUtil.isNotEmpty(tagIDs)) {
+                List<String> tagsStr = tagMapper.getAllNameByTagIDs(tagIDs);
+                post.setTagsStr(tagsStr);
+            }
             // 3 解析 highlight
             Map<String, List<String>> highlightFields = hit.getHighlightFields();
             if (!CollectionUtil.isEmpty(highlightFields)) {
@@ -243,8 +366,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                     }
                 }
             }
-            //TODO 4 自动补全
-            // 5 收集结果
+            // 4 收集结果
             postsResult.add(post);
         }
 
@@ -281,11 +403,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             pageNum = 1;
         }
         page.setPageNum(pageNum);
-        page.setPageSize(PostSearchDTO.PAGE_SIZE);
+        page.setPageSize(CommonConst.STANDARD_PAGE_SIZE);
         // 查询结果
         page.setData(postsResult);
         postSearchVO.setPage(page);
-        postSearchVO.setAggregation(aggregationResult);
+        postSearchVO.setAggregations(aggregationResult);
         return postSearchVO;
     }
+
+
 }

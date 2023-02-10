@@ -2,12 +2,15 @@ package suzumiya.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
-import suzumiya.model.pojo.Post;
+import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
 import suzumiya.util.ResponseGenerator;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/post")
@@ -17,13 +20,32 @@ public class PostController {
     private IPostService postService;
 
     @PostMapping("/insert")
-    public void insert(@RequestBody Post post) {
-        postService.insert(post);
+    public BaseResponse<Object> insert(@RequestBody PostInsertDTO postInsertDTO) {
+        postService.insert(postInsertDTO);
+        return ResponseGenerator.returnOK("新增post成功", null);
+    }
+
+    @DeleteMapping("/delete/{postId}")
+    public BaseResponse<Object> delete(@PathVariable("postId") Long postId) {
+        postService.delete(postId);
+        return ResponseGenerator.returnOK("删除post成功", null);
+    }
+
+    @PutMapping("/update")
+    public BaseResponse<Object> update(@RequestBody PostUpdateDTO postUpdateDTO) {
+        postService.update(postUpdateDTO);
+        return ResponseGenerator.returnOK("更新post成功", null);
     }
 
     @GetMapping("/search")
     public BaseResponse<PostSearchVO> search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
         PostSearchVO postSearchVO = postService.search(postSearchDTO);
         return ResponseGenerator.returnOK("查询post成功", postSearchVO);
+    }
+
+    @GetMapping("/search/suggestions")
+    public BaseResponse<List<String>> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
+        List<String> suggestions = postService.suggest(searchKey);
+        return ResponseGenerator.returnOK("", suggestions);
     }
 }

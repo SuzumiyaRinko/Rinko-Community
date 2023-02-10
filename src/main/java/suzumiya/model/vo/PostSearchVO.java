@@ -13,7 +13,7 @@ public class PostSearchVO {
     // 查询结果
     private Page<Post> page;
     // 聚合结果
-    private Map<String, List<String>> aggregation;
+    private Map<String, List<String>> aggregations;
     // 自动补全结果
-    private List<String> suggestion;
+    private List<String> suggestions;
 }

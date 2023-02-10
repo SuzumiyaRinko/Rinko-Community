@@ -12,16 +12,14 @@ import org.springframework.data.redis.core.RedisTemplate;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
-import suzumiya.mapper.PostMapper;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.util.MailUtils;
-import suzumiya.util.WordTreeUtils;
 
 import javax.mail.MessagingException;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -30,9 +28,6 @@ public class MQConsumer {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
-
-    @Autowired
-    private PostMapper postMapper;
 
     @Autowired
     private PostRepository postRepository;
@@ -64,22 +59,6 @@ public class MQConsumer {
             key = {MQConstant.POST_INSERT_KEY}
     ))
     public void listenPostInsertQueue(Post post) {
-        /* 过滤敏感词 */
-        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(post.getTitle()));
-        post.setContent(WordTreeUtils.replaceAllSensitiveWords(post.getContent()));
-
-        /* 新增post到MySQL */
-        // 把tagIDs转换为tags
-        List<Integer> tagIDs = post.getTagIDs();
-        int tags = 0;
-        for (Integer tagID : tagIDs) {
-            tags += Math.pow(2, tagID - 1);
-        }
-        post.setTags(tags);
-        // 新增post到MySQL
-        post.setCreateTime(LocalDateTime.now());
-        postMapper.insert(post);
-
         /* 新增post到ES */
         postRepository.save(post);
 
@@ -87,6 +66,41 @@ public class MQConsumer {
         redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, post.getId());
 
         log.debug("正在新增帖子 title={} ", post.getTitle());
+    }
+
+    /* 监听Post删除接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.POST_DELETE_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.POST_DELETE_KEY}
+    ))
+    public void listenPostDeleteQueue(Long postId) {
+        /* 在ES把post逻辑删除 */
+        postRepository.deleteById(postId);
+
+        log.debug("正在逻辑删除帖子 postId={} ", postId);
+    }
+
+    /* 监听Post更新接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.POST_UPDATE_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.POST_UPDATE_KEY}
+    ))
+    public void listenPostUpdateQueue(Post post) {
+        /* 在ES中更新post */
+        Optional<Post> optional = postRepository.findById(post.getId());
+        if (optional.isEmpty()) {
+            throw new RuntimeException("该帖子不存在");
+        }
+
+        Post t = optional.get();
+        t.setTitle(post.getTitle());
+        t.setContent(post.getContent());
+        t.setTagIDs(post.getTagIDs());
+        postRepository.save(t);
+
+        log.debug("正在更新帖子 postId={} ", post.getId());
     }
 
     // DelayQueue：监听用户激活时间是否结束
