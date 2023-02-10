@@ -53,8 +53,8 @@ public class TestMySQL {
     @Test
     void testUpdate() {
         User user = new User();
-        user.setId(1622138408061227009L);
-        user.setNickname("okokok");
+        user.setId(1L);
+        user.setIsFamous(true);
         userService.updateById(user);
     }
 

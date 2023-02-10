@@ -26,7 +26,7 @@ public class TestPost {
     @Test
     void testPostInsert() throws InterruptedException {
         Post post = new Post();
-        post.setUserId(2L);
+        post.setUserId(1L);
         post.setTitle("坤坤打飞机后的产后护理");
         post.setContent("坤坤的产后护理是非常麻烦的麻烦的傻逼xxx打飞机芜湖");
         post.setTagIDs(List.of(1, 3));
@@ -40,10 +40,10 @@ public class TestPost {
     @Test
     void testPostSearch() throws NoSuchFieldException, IllegalAccessException {
         PostSearchDTO postSearchDTO = new PostSearchDTO();
-        postSearchDTO.setSortType(2);
-//        postSearchDTO.setSearchKey("坤坤");
+        postSearchDTO.setSortType(1);
+        postSearchDTO.setSearchKey("坤坤");
         PostSearchVO postSearchVO = postService.search(postSearchDTO);
-        System.out.println(postSearchVO.getAggregation());
-//        System.out.println(postSearchVO.getPage().getData());
+//        System.out.println(postSearchVO.getAggregation());
+        System.out.println(postSearchVO.getPage().getData());
     }
 }

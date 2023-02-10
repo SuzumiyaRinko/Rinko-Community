@@ -1,10 +1,14 @@
 package suzumiya.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.elasticsearch.common.lucene.search.function.CombineFunction;
+import org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
@@ -24,10 +28,13 @@ import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import suzumiya.constant.CacheConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
+import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.Page;
 import suzumiya.model.dto.PostSearchDTO;
 import suzumiya.model.pojo.Post;
@@ -41,20 +48,26 @@ import java.util.*;
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
 
-    @Resource
-    private RabbitTemplate rabbitTemplate;
-
-//    @Autowired
-//    private PostRepository postRepository;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Resource
-    private ElasticsearchRestTemplate esTemplate;
+    private RabbitTemplate rabbitTemplate; // RabbitMQ
+
+    @Autowired
+    private Cache<String, Object> cache; // Caffeine
+
+    @Resource
+    private ElasticsearchRestTemplate esTemplate; // ES
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Autowired
     private TagMapper tagMapper;
 
     // 聚合相关
-    private final String[] aggsNames = {"tagAggs"};
+    private final String[] aggsNames = {"tagAggregation"};
     private final String[] aggsFieldNames = {"tagIDs"};
     private final String[] aggsResultNames = {"标签"};
 
@@ -76,12 +89,61 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
-        /* 根据HotelSearchDTO生成SearchQuery对象 */
-        NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
-        /* 查询结果 */
-        SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
-        /* 解析结果 */
-        return parseSearchHits(postSearchDTO, searchHits);
+        PostSearchVO postSearchVO = new PostSearchVO();
+        Long userId = postSearchDTO.getUserId();
+        String cacheKey = null;
+        boolean isCache = false;
+        boolean flag = false;
+        if (userId != null && userMapper.getIsFamousByUserId(userId)) {
+            cacheKey = CacheConst.CACHE_POST_KEY + postSearchDTO.getPageNum() + ":" + userId;
+            isCache = true;
+        } else if (userId == null) {
+            cacheKey = CacheConst.CACHE_POST_KEY + postSearchDTO.getPageNum();
+            isCache = true;
+        }
+
+        if (isCache) {
+            /* 查缓存 */
+            // Caffeine
+            Object t = cache.getIfPresent(cacheKey);
+            if (t != null) {
+                postSearchVO = (PostSearchVO) t;
+                flag = true;
+            }
+
+            // Redis
+            Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
+            if (ObjectUtil.isNotEmpty(entries)) {
+                BeanUtil.fillBeanWithMap(entries, postSearchVO, null);
+                flag = true;
+            }
+
+            // ES
+            if (!flag) {
+                // 根据HotelSearchDTO生成SearchQuery对象 */
+                NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
+                // 查询结果
+                SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
+                // 解析结果
+                postSearchVO = parseSearchHits(postSearchDTO, searchHits);
+            }
+
+            /* 构建或刷新Caffeine和Redis缓存 */
+            cache.put(cacheKey, postSearchVO);
+            Map<String, Object> value = new HashMap<>();
+            BeanUtil.beanToMap(postSearchVO, value, true, null);
+            redisTemplate.opsForHash().putAll(cacheKey, value);
+        } else {
+            /* 查询ES */
+            // 根据HotelSearchDTO生成SearchQuery对象 */
+            NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
+            // 查询结果
+            SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
+            // 解析结果
+            postSearchVO = parseSearchHits(postSearchDTO, searchHits);
+        }
+
+        return postSearchVO;
     }
 
     /* 生成SearchQuery对象 */
@@ -91,6 +153,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
         /* 构建bool查询 */
         BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery.must(QueryBuilders.termQuery("isDelete", false));
         // searchKey
         String searchKey = postSearchDTO.getSearchKey();
         if (StrUtil.isBlank(searchKey)) {
@@ -105,34 +168,36 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 boolQuery.filter(QueryBuilders.matchQuery("tagIDs", tagID));
             }
         }
+        // 根据userId查询post
+        Long userId = postSearchDTO.getUserId();
+        if (userId != null) {
+            boolQuery.filter(QueryBuilders.matchQuery("userId", userId));
+        }
 
         /* 构建算分函数 */
         FunctionScoreQueryBuilder functionScoreQuery = QueryBuilders.functionScoreQuery(
                 boolQuery,
                 new FunctionScoreQueryBuilder.FilterFunctionBuilder[]{
-                        new FunctionScoreQueryBuilder.FilterFunctionBuilder(QueryBuilders.termQuery("isTop", 1), ScoreFunctionBuilders.weightFactorFunction(100))
+                        new FunctionScoreQueryBuilder.FilterFunctionBuilder(QueryBuilders.termQuery("isTop", true), ScoreFunctionBuilders.weightFactorFunction(100)),
+                        new FunctionScoreQueryBuilder.FilterFunctionBuilder(ScoreFunctionBuilders.fieldValueFactorFunction("score").missing(0.0).modifier(FieldValueFactorFunction.Modifier.LOG2P))
                 });
         functionScoreQuery.boostMode(CombineFunction.SUM);
         builder.withQuery(functionScoreQuery);
 
         /* 构建排序 */
         Integer sortType = postSearchDTO.getSortType();
-        if (sortType == null || sortType == 1 || sortType >= 3) {
+        if (sortType == 2) {
             builder.withSort(Sort.by(Sort.Order.desc("score"))); // 根据post分数降序查询
-        } else if (sortType == 2) {
+        } else if (sortType == 3) {
             builder.withSort(Sort.by(Sort.Order.desc("createTime"))); // 根据post创建时间降序查询
         }
 
         /* 构建分页 */
         Integer pageNum = postSearchDTO.getPageNum();
-        Integer pageSize = postSearchDTO.getPageSize();
         if (pageNum == null || pageNum <= 0) {
             pageNum = 1;
         }
-        if (pageSize == null || pageSize <= 0) {
-            pageSize = 10;
-        }
-        builder.withPageable(PageRequest.of(pageNum - 1, pageSize)); // ES的页数是从"0"开始算的
+        builder.withPageable(PageRequest.of(pageNum - 1, PostSearchDTO.PAGE_SIZE)); // ES的页数是从"0"开始算的
 
         /* 构建高光 */
         builder.withHighlightFields(
@@ -157,6 +222,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         List<SearchHit<Post>> hits = searchHits.getSearchHits();
         List<Post> postsResult = new ArrayList<>();
         for (SearchHit<Post> hit : hits) {
+            System.out.println(hit.getId() + " " + hit.getScore());
             // 1 解析 _source
             Post post = hit.getContent();
             // 2 tagIDs转tagsStr
@@ -211,15 +277,11 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         page.setTotal(total);
         // 当前页，一页有多少条数据
         Integer pageNum = postSearchDTO.getPageNum();
-        Integer pageSize = postSearchDTO.getPageSize();
         if (pageNum == null || pageNum <= 0) {
             pageNum = 1;
         }
-        if (pageSize == null || pageSize <= 0) {
-            pageSize = 1;
-        }
         page.setPageNum(pageNum);
-        page.setPageSize(pageSize);
+        page.setPageSize(PostSearchDTO.PAGE_SIZE);
         // 查询结果
         page.setData(postsResult);
         postSearchVO.setPage(page);

@@ -13,5 +13,6 @@ public class RedisConst {
     public static final String REGISTER_TIMES_KEY = "registerTimes:";
 
     /* Post */
+    // 要刷新分数的post集合
     public static final String POST_SCORE_UPDATE_KEY = "post:scoreUpdate";
 }

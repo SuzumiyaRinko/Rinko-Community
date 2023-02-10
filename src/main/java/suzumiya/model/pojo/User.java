@@ -1,9 +1,6 @@
 package suzumiya.model.pojo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -38,12 +35,17 @@ public class User implements UserDetails {
     private String activationUUID;
     // 头像路径
     private String avatar;
+    // 知名用户 0:否 1:是
+    private Boolean isFamous;
     // 创建时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
     // 修改时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
+    // 是否逻辑删除
+    @TableLogic
+    private Boolean isDelete;
 
     // 当前用户的所有权限
     @TableField(exist = false)

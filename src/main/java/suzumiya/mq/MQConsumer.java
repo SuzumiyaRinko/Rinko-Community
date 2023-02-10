@@ -78,7 +78,6 @@ public class MQConsumer {
         post.setTags(tags);
         // 新增post到MySQL
         post.setCreateTime(LocalDateTime.now());
-        post.setUpdateTime(LocalDateTime.now());
         postMapper.insert(post);
 
         /* 新增post到ES */

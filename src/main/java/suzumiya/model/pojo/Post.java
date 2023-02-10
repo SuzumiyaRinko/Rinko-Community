@@ -28,39 +28,45 @@ public class Post implements Serializable {
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String title;
     // Tag标签（最大值是2^31-1，所以可以表示31个tag，二进制从左往右读）
+    @Field(type = FieldType.Integer, index = false)
     private Integer tags;
     // 内容
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
+    // 是否加精 0:否 1:是
+    @Field(type = FieldType.Boolean, index = false)
+    private Boolean isWonderful = false;
     // 是否置顶 0:否 1:是
-    @Field(type = FieldType.Integer)
-    private Integer isTop;
+    @Field(type = FieldType.Boolean)
+    private Boolean isTop = false;
     // 用于做热度排序的分数
-    @Field(type = FieldType.Double)
-    private Double score;
+    @Field(type = FieldType.Double, index = false)
+    private Double score = 0.0;
     // 创建时间（必须要写 format = {}）
-    @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd HH:mm:ss")
+    @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd HH:mm:ss", index = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
     // 修改时间
+    @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd HH:mm:ss", index = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
     // 是否逻辑删除
+    @Field(type = FieldType.Boolean)
     @TableLogic
-    @Field(type = FieldType.Integer)
-    private Integer isDelete;
+    private Boolean isDelete = false;
 
     // tag数组
     @Field(type = FieldType.Integer)
     @TableField(exist = false)
     private List<Integer> tagIDs;
     // 获取完整的tag名字
+    @Field(type = FieldType.Keyword, index = false)
     @TableField(exist = false)
     private List<String> tagsStr;
 
     // 用于搜索的字段
+    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", ignoreFields = "all", excludeFromSource = true)
     @JsonIgnore
     @TableField(exist = false)
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", ignoreFields = "all", excludeFromSource = true)
     private String searchField;
 }
