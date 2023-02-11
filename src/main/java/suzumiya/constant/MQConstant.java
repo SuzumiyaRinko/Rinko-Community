@@ -8,11 +8,15 @@ public class MQConstant {
     public static final String ACTIVATION_QUEUE = "activation.queue";
     public static final String ACTIVATION_KEY = "activation";
 
-    /* 服务层MQ */
+    /* 服务层交换机 */
     public static final String SERVICE_DIRECT = "service.direct";
+
+    /* User */
     // 监听用户注册接口
     public static final String USER_REGISTER_QUEUE = "user.register.queue";
     public static final String USER_REGISTER_KEY = "user.register";
+
+    /* Post */
     // 监听Post新增接口
     public static final String POST_INSERT_QUEUE = "post.insert.queue";
     public static final String POST_INSERT_KEY = "post.insert";
@@ -22,4 +26,12 @@ public class MQConstant {
     // 监听Post更新接口
     public static final String POST_UPDATE_QUEUE = "post.update.queue";
     public static final String POST_UPDATE_KEY = "post.update";
+
+    /* Cache */
+    // 更新缓存
+    public static final String CACHE_UPDATE_QUEUE = "cache.update.queue";
+    public static final String CACHE_UPDATE_KEY = "cache.update";
+    // 删除缓存
+    public static final String CACHE_CLEAR_QUEUE = "cache.clear.queue";
+    public static final String CACHE_CLEAR_KEY = "cache.clear";
 }

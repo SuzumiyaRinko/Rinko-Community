@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.elasticsearch.common.lucene.search.function.CombineFunction;
@@ -36,10 +37,7 @@ import suzumiya.constant.MQConstant;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
-import suzumiya.model.dto.Page;
-import suzumiya.model.dto.PostInsertDTO;
-import suzumiya.model.dto.PostSearchDTO;
-import suzumiya.model.dto.PostUpdateDTO;
+import suzumiya.model.dto.*;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
@@ -48,9 +46,9 @@ import suzumiya.util.WordTreeUtils;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
@@ -94,6 +92,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
         post.setContent(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
 
+        /* 清除HTML标记 */
+        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+
         /* 新增post到MySQL */
         // 把tagIDs转换为tags
         List<Integer> tagIDs = post.getTagIDs();
@@ -117,15 +119,19 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 新增post到ES（异步） */
         /* 添加到带算分Post的Set集合（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_INSERT_KEY, post);
+        /* 清除post缓存（异步） */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
 
     @Override
     public void delete(Long postId) {
-        /* 在MySQL把post逻辑删除（异步） */
+        /* 在MySQL把post逻辑删除 */
         postMapper.deleteById(postId);
 
         /* 在ES把post逻辑删除（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
+        /* 清除post缓存（异步） */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
 
     @Override
@@ -139,6 +145,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         Post post = new Post();
         post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getTitle()));
         post.setContent(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getContent()));
+
+        /* 清除HTML标记 */
+        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
 
         /* 在MySQL中更新post */
         post.setId(postUpdateDTO.getPostId());
@@ -159,25 +169,27 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
         /* 在ES中更新post（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_UPDATE_KEY, post);
+        /* 清除post缓存（异步） */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
         PostSearchVO postSearchVO = new PostSearchVO();
-        Long userId = postSearchDTO.getUserId();
-        Integer sortType = postSearchDTO.getSortType();
-        Integer pageNum = postSearchDTO.getPageNum();
+        long userId = postSearchDTO.getUserId();
+        int sortType = postSearchDTO.getSortType();
+        int pageNum = postSearchDTO.getPageNum();
         String cacheKey = null;
         boolean isCache = false;
         boolean flag = false;
 
         /* 判断isCache和cacheKey */
-        if (userId != null && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
+        if (userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
             isCache = true;
-            cacheKey = CacheConst.CACHE_POST_KEY + pageNum + ":" + userId;
-        } else if (userId == null) {
+            cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum;
+        } else if (userId <= 0) {
             isCache = true;
-            cacheKey = CacheConst.CACHE_POST_KEY + pageNum + ":0:" + sortType;
+            cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
         }
 
         if (isCache) {
@@ -206,12 +218,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 postSearchVO = parseSearchHits(postSearchDTO, searchHits);
             }
 
-            /* 构建或刷新Caffeine和Redis缓存 */
-            cache.put(cacheKey, postSearchVO);
-            Map<String, Object> value = new HashMap<>();
-            BeanUtil.beanToMap(postSearchVO, value, true, null);
-            redisTemplate.opsForHash().putAll(cacheKey, value);
-            redisTemplate.expire(cacheKey, 30L, TimeUnit.MINUTES);
+            /* 构建或刷新Caffeine和Redis缓存（异步） */
+            CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+            cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+            cacheUpdateDTO.setKey(cacheKey);
+            cacheUpdateDTO.setValue(postSearchVO);
+            cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         } else {
             /* 查询ES */
             // 根据HotelSearchDTO生成SearchQuery对象
@@ -262,15 +275,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             boolQuery.must(QueryBuilders.matchQuery("searchField", searchKey));
         }
         // 标签
-        Integer[] tagIDs = postSearchDTO.getTagIDs();
+        int[] tagIDs = postSearchDTO.getTagIDs();
         if (ArrayUtil.isNotEmpty(tagIDs)) {
             for (Integer tagID : tagIDs) {
                 boolQuery.filter(QueryBuilders.matchQuery("tagIDs", tagID));
             }
         }
         // 根据userId查询post
-        Long userId = postSearchDTO.getUserId();
-        if (userId != null) {
+        long userId = postSearchDTO.getUserId();
+        if (userId > 0) {
             boolQuery.filter(QueryBuilders.matchQuery("userId", userId));
         }
 
@@ -285,16 +298,16 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         builder.withQuery(functionScoreQuery);
 
         /* 构建排序 */
-        Integer sortType = postSearchDTO.getSortType();
-        if (sortType == 2) {
+        int sortType = postSearchDTO.getSortType();
+        if (sortType == PostSearchDTO.SORT_TYPE_SCORE) {
             builder.withSort(Sort.by(Sort.Order.desc("score"))); // 根据post分数降序查询
-        } else if (sortType == 3) {
+        } else if (sortType == PostSearchDTO.SORT_TYPE_TIME) {
             builder.withSort(Sort.by(Sort.Order.desc("createTime"))); // 根据post创建时间降序查询
         }
 
         /* 构建分页 */
-        Integer pageNum = postSearchDTO.getPageNum();
-        if (pageNum == null || pageNum <= 0) {
+        int pageNum = postSearchDTO.getPageNum();
+        if (pageNum <= 0) {
             pageNum = 1;
         }
         builder.withPageable(PageRequest.of(pageNum - 1, CommonConst.STANDARD_PAGE_SIZE)); // ES的页数是从"0"开始算的

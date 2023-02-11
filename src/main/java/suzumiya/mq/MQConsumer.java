@@ -1,5 +1,7 @@
 package suzumiya.mq;
 
+import cn.hutool.core.bean.BeanUtil;
+import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.rabbit.annotation.Exchange;
@@ -8,23 +10,33 @@ import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
+import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
+import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.util.MailUtils;
 
 import javax.mail.MessagingException;
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Slf4j
 public class MQConsumer {
+
+    @Autowired
+    private Cache<String, Object> cache; // Caffeine
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -101,6 +113,50 @@ public class MQConsumer {
         postRepository.save(t);
 
         log.debug("正在更新帖子 postId={} ", post.getId());
+    }
+
+    /* 监听Cache更新接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.CACHE_UPDATE_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.CACHE_UPDATE_KEY}
+    ))
+    public void listenCacheUpdateQueue(CacheUpdateDTO cacheUpdateDTO) {
+        /* 构建或刷新Caffeine和Redis缓存 */
+        String key = cacheUpdateDTO.getKey();
+        Object value = cacheUpdateDTO.getValue();
+        int cacheType = cacheUpdateDTO.getCacheType();
+        Duration redisTTL = cacheUpdateDTO.getRedisTTL();
+        cache.put(key, value);
+
+        if (cacheType == CacheConst.VALUE_TYPE_SIMPLE) {
+            redisTemplate.opsForValue().set(key, value, redisTTL);
+        } else {
+            Map<String, Object> valueMap = new HashMap<>();
+            BeanUtil.beanToMap(value, valueMap, true, null);
+            redisTemplate.opsForHash().putAll(key, valueMap);
+            redisTemplate.expire(key, redisTTL);
+        }
+
+        log.debug("构建或刷新Caffeine和Redis缓存");
+    }
+
+    /* 监听Cache清除接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.CACHE_CLEAR_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.CACHE_CLEAR_KEY}
+    ))
+    public void listenCacheClearQueue(String keyPattern) {
+        /* 清除Caffeine和Redis缓存 */
+        Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
+        while (cursor.hasNext()) {
+            String cacheKey = cursor.next();
+            cache.invalidate(cacheKey);
+            redisTemplate.delete(cacheKey);
+        }
+
+        log.debug("清除Caffeine和Redis缓存, keyPattern={}", keyPattern);
     }
 
     // DelayQueue：监听用户激活时间是否结束

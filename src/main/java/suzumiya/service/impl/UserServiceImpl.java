@@ -226,6 +226,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 判断该账号是否激活超时 */
         Object t = redisTemplate.opsForValue().get(RedisConst.ACTIVATION_USER_KEY + uuid);
         if (t == null) {
+            userMapper.deleteById(existedUser.getId());
             response.getWriter().print(CommonConst.HTML_ACTIVATION_EXPIRED
                     .replaceAll("<yyyyy>", CommonConst.USER_REGISTER_URL));
             return; // 账号激活超时

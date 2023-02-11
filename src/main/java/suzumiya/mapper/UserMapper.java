@@ -1,6 +1,7 @@
 package suzumiya.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -17,4 +18,7 @@ public interface UserMapper extends BaseMapper<User> {
 
     @Select("SELECT is_famous FROM sys_user WHERE id = #{userId}")
     Boolean getIsFamousByUserId(@Param("userId") Long userId);
+
+    @Delete("DELETE FROM sys_user WHERE is_delete = 1")
+    void tableLogicDataClear();
 }

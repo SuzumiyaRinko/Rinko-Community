@@ -11,7 +11,7 @@ public class IKAnalyzerUtils {
     /* 对content进行分词 */
     public static List<String> parse(String content) {
         IKAnalyzerEngine engine = new IKAnalyzerEngine();
-        Result t = engine.parse("来教大家如何实现MySQL安装");
+        Result t = engine.parse(content);
         List<String> result = new ArrayList<>();
         while (t.hasNext()) {
             result.add(t.next().getText());
