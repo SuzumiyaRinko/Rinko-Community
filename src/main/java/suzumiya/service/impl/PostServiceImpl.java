@@ -34,12 +34,15 @@ import org.springframework.stereotype.Service;
 import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
+import suzumiya.constant.RedisConst;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.*;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
+import suzumiya.repository.PostRepository;
+import suzumiya.service.ICacheService;
 import suzumiya.service.IPostService;
 import suzumiya.util.IKAnalyzerUtils;
 import suzumiya.util.WordTreeUtils;
@@ -49,6 +52,7 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
@@ -66,6 +70,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     private ElasticsearchRestTemplate esTemplate; // ES
 
     @Autowired
+    private ICacheService cacheService;
+
+    @Autowired
     private UserMapper userMapper;
 
     @Autowired
@@ -73,6 +80,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Autowired
     private PostMapper postMapper;
+
+    @Autowired
+    private PostRepository postRepository;
 
     // 聚合相关
     private final String[] aggsNames = {"tagAggregation"};
@@ -116,9 +126,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setCreateTime(LocalDateTime.now());
         postMapper.insert(post);
 
-        /* 新增post到ES（异步） */
-        /* 添加到带算分Post的Set集合（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_INSERT_KEY, post);
+        /* 新增post到ES */
+        postRepository.save(post);
+
+        /* 添加到待算分Post的Set集合 */
+        redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, post.getId());
+
         /* 清除post缓存（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
@@ -128,8 +141,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 在MySQL把post逻辑删除 */
         postMapper.deleteById(postId);
 
-        /* 在ES把post逻辑删除（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
+        /* 在ES把post删除 */
+        postRepository.deleteById(postId);
+
         /* 清除post缓存（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
@@ -165,10 +179,23 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setTitle(postUpdateDTO.getTitle());
         post.setContent(postUpdateDTO.getContent());
         post.setTagIDs(postUpdateDTO.getTagIDs());
-        postMapper.updateById(post);
+        int result = postMapper.updateById(post);
+        if (result == 0) {
+            throw new RuntimeException("该帖子不存在");
+        }
 
-        /* 在ES中更新post（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_UPDATE_KEY, post);
+        /* 在ES中更新post */
+        Optional<Post> optional = postRepository.findById(post.getId());
+        if (optional.isEmpty()) {
+            throw new RuntimeException("该帖子不存在");
+        }
+
+        Post t = optional.get();
+        t.setTitle(post.getTitle());
+        t.setContent(post.getContent());
+        t.setTagIDs(post.getTagIDs());
+        postRepository.save(t);
+
         /* 清除post缓存（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
     }
@@ -424,5 +451,82 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         return postSearchVO;
     }
 
+    @Override
+    public void like(Long postId) {
+        //TODO 这2行代码不应该被注释掉
+//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        Long userId = user.getId();
+        Long userId = 1L; // 这行代码应该被注释掉
 
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_LIKE_LIST_KEY + postId, userId))) {
+            /* 减少某个post的点赞数 */
+            redisTemplate.opsForValue().decrement(RedisConst.POST_LIKE_COUNT_KEY + postId);
+            /* 在该post的like列表中移除user */
+            redisTemplate.opsForSet().remove(RedisConst.POST_LIKE_LIST_KEY + postId, userId);
+        } else {
+            /* 增加某个post的点赞数 */
+            redisTemplate.opsForValue().increment(RedisConst.POST_LIKE_COUNT_KEY + postId);
+            /* 在该post的like列表中增加user */
+            redisTemplate.opsForSet().add(RedisConst.POST_LIKE_LIST_KEY + postId, userId);
+        }
+
+        //TODO 发系统消息
+    }
+
+    @Override
+    public void collect(Long postId) {
+        //TODO 这2行代码不应该被注释掉
+//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        Long userId = user.getId();
+        Long userId = 1L; // 这行代码应该被注释掉
+
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId))) {
+            /* 减少某个post的收藏数 */
+            redisTemplate.opsForValue().decrement(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+            /* 在该post的collection列表中移除user */
+            redisTemplate.opsForSet().remove(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId);
+        } else {
+            /* 增加某个post的收藏数 */
+            redisTemplate.opsForValue().increment(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+            /* 在该post的collection列表中增加user */
+            redisTemplate.opsForSet().add(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId);
+        }
+
+        //TODO 发系统消息
+    }
+
+    @Override
+    public void setWonderful(List<Long> postIds) {
+        /* 判空 */
+        if (ObjectUtil.isEmpty(postIds)) {
+            return;
+        }
+
+        /* 在MySQL中更新post */
+        List<Post> posts = postIds.stream().map((postId) -> {
+            Post t = new Post();
+            t.setId(postId);
+            t.setIsWonderful(true);
+            return t;
+        }).collect(Collectors.toList());
+        this.updateBatchById(posts);
+
+        /* 在ES中更新post */
+        posts = posts.stream().map((post) -> {
+            Optional<Post> optional = postRepository.findById(post.getId());
+            if (optional.isEmpty()) {
+                throw new RuntimeException("该帖子不存在");
+            }
+            post = optional.get();
+            post.setIsWonderful(true);
+            return post;
+        }).collect(Collectors.toList());
+        postRepository.saveAll(posts);
+
+        /* 添加到待算分Post的Set集合 */
+        redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, postIds.toArray());
+
+        /* 清除post缓存 */
+        cacheService.clearCache(CacheConst.CACHE_POST_KEY_PATTERN);
+    }
 }

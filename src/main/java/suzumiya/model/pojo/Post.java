@@ -34,14 +34,14 @@ public class Post implements Serializable {
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
     // 是否加精 0:否 1:是
-    @Field(type = FieldType.Boolean, index = false)
-    private Boolean isWonderful = false;
+    @Field(type = FieldType.Boolean)
+    private Boolean isWonderful;
     // 是否置顶 0:否 1:是
     @Field(type = FieldType.Boolean)
-    private Boolean isTop = false;
+    private Boolean isTop;
     // 用于做热度排序的分数
     @Field(type = FieldType.Double, index = false)
-    private Double score = 0.0;
+    private Double score;
     // 创建时间（必须要写 format = {}）
     @Field(type = FieldType.Date, format = {}, pattern = "yyyy-MM-dd HH:mm:ss", index = false)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
@@ -53,7 +53,7 @@ public class Post implements Serializable {
     // 是否逻辑删除
     @Field(type = FieldType.Boolean, index = false)
     @TableLogic
-    private Boolean isDelete = false;
+    private Boolean isDelete;
 
     // tag数组
     @Field(type = FieldType.Integer)

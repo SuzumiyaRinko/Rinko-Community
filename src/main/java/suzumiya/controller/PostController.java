@@ -48,4 +48,16 @@ public class PostController {
         List<String> suggestions = postService.suggest(searchKey);
         return ResponseGenerator.returnOK("", suggestions);
     }
+
+    @PostMapping("/like")
+    public BaseResponse<Object> like(@RequestBody Long postId) {
+        postService.like(postId);
+        return ResponseGenerator.returnOK("点赞post成功", null);
+    }
+
+    @PostMapping("/collect")
+    public BaseResponse<Object> collect(@RequestBody Long postId) {
+        postService.collect(postId);
+        return ResponseGenerator.returnOK("收藏post成功", null);
+    }
 }

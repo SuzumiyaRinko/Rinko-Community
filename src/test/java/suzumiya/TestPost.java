@@ -67,4 +67,19 @@ public class TestPost {
         List<String> suggestions = postService.suggest("坤坤");
         System.out.println(suggestions);
     }
+
+    @Test
+    void testSetWonderful() {
+        postService.setWonderful(List.of(1L));
+    }
+
+    @Test
+    void testLike() {
+        postService.like(1L);
+    }
+
+    @Test
+    void testCollect() {
+        postService.collect(1L);
+    }
 }

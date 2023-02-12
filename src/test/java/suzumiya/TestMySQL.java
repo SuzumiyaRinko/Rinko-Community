@@ -6,13 +6,16 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
+import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -29,6 +32,9 @@ public class TestMySQL {
 
     @Autowired
     private IPostService postService;
+
+    @Autowired
+    private PostMapper postMapper;
 
     @Autowired
     private TagMapper tagMapper;
@@ -73,5 +79,17 @@ public class TestMySQL {
     @Test
     void testUserMapper() {
         System.out.println(Boolean.TRUE.equals(userMapper.getIsFamousByUserId(114514L)));
+    }
+
+    @Test
+    void testPostMapper() {
+        List<Long> ids = List.of(2L, 3L, 4L, 5L);
+        List<Post> posts = ids.stream().map((postId) -> {
+            Post t = new Post();
+            t.setId(postId);
+            t.setIsWonderful(true);
+            return t;
+        }).collect(Collectors.toList());
+        postService.updateBatchById(posts);
     }
 }

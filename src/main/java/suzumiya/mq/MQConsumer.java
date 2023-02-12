@@ -1,6 +1,5 @@
 package suzumiya.mq;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -10,30 +9,26 @@ import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ScanOptions;
-import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.model.dto.CacheUpdateDTO;
-import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
+import suzumiya.service.ICacheService;
 import suzumiya.util.MailUtils;
 
 import javax.mail.MessagingException;
-import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
 @Slf4j
 public class MQConsumer {
+
+    @Autowired
+    private ICacheService cacheService;
 
     @Autowired
     private Cache<String, Object> cache; // Caffeine
@@ -65,55 +60,36 @@ public class MQConsumer {
     }
 
     /* 监听Post新增接口 */
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = MQConstant.POST_INSERT_QUEUE),
-            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-            key = {MQConstant.POST_INSERT_KEY}
-    ))
-    public void listenPostInsertQueue(Post post) {
-        /* 新增post到ES */
-        postRepository.save(post);
-
-        /* 添加到带算分Post的Set集合 */
-        redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, post.getId());
-
-        log.debug("正在新增帖子 title={} ", post.getTitle());
-    }
+//    @RabbitListener(bindings = @QueueBinding(
+//            value = @Queue(name = MQConstant.POST_INSERT_QUEUE),
+//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+//            key = {MQConstant.POST_INSERT_KEY}
+//    ))
+//    public void listenPostInsertQueue(Post post) {
+//        log.debug("正在新增帖子 title={} ", post.getTitle());
+//    }
 
     /* 监听Post删除接口 */
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = MQConstant.POST_DELETE_QUEUE),
-            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-            key = {MQConstant.POST_DELETE_KEY}
-    ))
-    public void listenPostDeleteQueue(Long postId) {
-        /* 在ES把post逻辑删除 */
-        postRepository.deleteById(postId);
-
-        log.debug("正在逻辑删除帖子 postId={} ", postId);
-    }
+//    @RabbitListener(bindings = @QueueBinding(
+//            value = @Queue(name = MQConstant.POST_DELETE_QUEUE),
+//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+//            key = {MQConstant.POST_DELETE_KEY}
+//    ))
+//    public void listenPostDeleteQueue(Long postId) {
+//
+//        log.debug("正在逻辑删除帖子 postId={} ", postId);
+//    }
 
     /* 监听Post更新接口 */
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = MQConstant.POST_UPDATE_QUEUE),
-            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-            key = {MQConstant.POST_UPDATE_KEY}
-    ))
-    public void listenPostUpdateQueue(Post post) {
-        /* 在ES中更新post */
-        Optional<Post> optional = postRepository.findById(post.getId());
-        if (optional.isEmpty()) {
-            throw new RuntimeException("该帖子不存在");
-        }
-
-        Post t = optional.get();
-        t.setTitle(post.getTitle());
-        t.setContent(post.getContent());
-        t.setTagIDs(post.getTagIDs());
-        postRepository.save(t);
-
-        log.debug("正在更新帖子 postId={} ", post.getId());
-    }
+//    @RabbitListener(bindings = @QueueBinding(
+//            value = @Queue(name = MQConstant.POST_UPDATE_QUEUE),
+//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+//            key = {MQConstant.POST_UPDATE_KEY}
+//    ))
+//    public void listenPostUpdateQueue(Post post) {
+//
+//        log.debug("正在更新帖子 postId={} ", post.getId());
+//    }
 
     /* 监听Cache更新接口 */
     @RabbitListener(bindings = @QueueBinding(
@@ -123,20 +99,7 @@ public class MQConsumer {
     ))
     public void listenCacheUpdateQueue(CacheUpdateDTO cacheUpdateDTO) {
         /* 构建或刷新Caffeine和Redis缓存 */
-        String key = cacheUpdateDTO.getKey();
-        Object value = cacheUpdateDTO.getValue();
-        int cacheType = cacheUpdateDTO.getCacheType();
-        Duration redisTTL = cacheUpdateDTO.getRedisTTL();
-        cache.put(key, value);
-
-        if (cacheType == CacheConst.VALUE_TYPE_SIMPLE) {
-            redisTemplate.opsForValue().set(key, value, redisTTL);
-        } else {
-            Map<String, Object> valueMap = new HashMap<>();
-            BeanUtil.beanToMap(value, valueMap, true, null);
-            redisTemplate.opsForHash().putAll(key, valueMap);
-            redisTemplate.expire(key, redisTTL);
-        }
+        cacheService.updateCache(cacheUpdateDTO);
 
         log.debug("构建或刷新Caffeine和Redis缓存");
     }
@@ -149,12 +112,7 @@ public class MQConsumer {
     ))
     public void listenCacheClearQueue(String keyPattern) {
         /* 清除Caffeine和Redis缓存 */
-        Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
-        while (cursor.hasNext()) {
-            String cacheKey = cursor.next();
-            cache.invalidate(cacheKey);
-            redisTemplate.delete(cacheKey);
-        }
+        cacheService.clearCache(keyPattern);
 
         log.debug("清除Caffeine和Redis缓存, keyPattern={}", keyPattern);
     }

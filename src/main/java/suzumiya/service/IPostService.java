@@ -25,4 +25,13 @@ public interface IPostService extends IService<Post> {
 
     /* 搜索联想 */
     List<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException;
+
+    /* 加精 */
+    void setWonderful(List<Long> postIds);
+
+    /* 点赞或取消点赞 */
+    void like(Long postId);
+
+    /* 收藏或取消收藏 */
+    void collect(Long postId);
 }
