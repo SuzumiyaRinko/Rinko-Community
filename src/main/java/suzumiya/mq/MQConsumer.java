@@ -13,12 +13,14 @@ import org.springframework.data.redis.core.RedisTemplate;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
+import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
 import suzumiya.util.MailUtils;
 
+import javax.annotation.Resource;
 import javax.mail.MessagingException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -30,8 +32,11 @@ public class MQConsumer {
     @Autowired
     private ICacheService cacheService;
 
-    @Autowired
-    private Cache<String, Object> cache; // Caffeine
+    @Resource(name = "userCache")
+    private Cache<String, Object> userCache; // Caffeine
+
+    @Resource(name = "postCache")
+    private Cache<String, Object> postCache; // Caffeine
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -110,11 +115,11 @@ public class MQConsumer {
             exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
             key = {MQConstant.CACHE_CLEAR_KEY}
     ))
-    public void listenCacheClearQueue(String keyPattern) {
+    public void listenCacheClearQueue(CacheClearDTO cacheClearDTO) {
         /* 清除Caffeine和Redis缓存 */
-        cacheService.clearCache(keyPattern);
+        cacheService.clearCache(cacheClearDTO);
 
-        log.debug("清除Caffeine和Redis缓存, keyPattern={}", keyPattern);
+        log.debug("清除Caffeine和Redis缓存, keyPattern={}", cacheClearDTO.getKeyPattern());
     }
 
     // DelayQueue：监听用户激活时间是否结束

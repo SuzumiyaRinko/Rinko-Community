@@ -5,7 +5,6 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.elasticsearch.common.lucene.search.function.CombineFunction;
@@ -63,8 +62,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Resource
     private RabbitTemplate rabbitTemplate; // RabbitMQ
 
-    @Autowired
-    private Cache<String, Object> cache; // Caffeine
+    @Resource(name = "postCache")
+    private Cache<String, Object> postCache; // Caffeine
 
     @Resource
     private ElasticsearchRestTemplate esTemplate; // ES
@@ -92,8 +91,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public void insert(PostInsertDTO postInsertDTO) {
         /* 判断标题和内容长度 */
-        if (postInsertDTO.getTitle().length() > 40 || postInsertDTO.getContent().length() > 10000) {
-            throw new RuntimeException("标题或内容长度超出限制");
+        String title = postInsertDTO.getTitle();
+        if (title.length() < 5 || title.length() > 40 || postInsertDTO.getContent().length() > 5000) {
+            throw new RuntimeException("标题或内容长度不符合要求");
         }
 
         Post post = new Post();
@@ -103,8 +103,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setContent(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
 
         /* 清除HTML标记 */
-        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
-        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+//        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+//        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
 
         /* 新增post到MySQL */
         // 把tagIDs转换为tags
@@ -151,8 +151,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public void update(PostUpdateDTO postUpdateDTO) {
         /* 判断标题和内容长度 */
-        if (postUpdateDTO.getTitle().length() > 40 || postUpdateDTO.getContent().length() > 10000) {
-            throw new RuntimeException("标题或内容长度超出限制");
+        String title = postUpdateDTO.getTitle();
+        if (title.length() < 5 || title.length() > 40 || postUpdateDTO.getContent().length() > 5000) {
+            throw new RuntimeException("标题或内容长度不符合要求");
         }
 
         /* 过滤敏感词 */
@@ -161,8 +162,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setContent(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getContent()));
 
         /* 清除HTML标记 */
-        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
-        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+//        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+//        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
 
         /* 在MySQL中更新post */
         post.setId(postUpdateDTO.getPostId());
@@ -222,7 +223,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (isCache) {
             /* 查缓存 */
             // Caffeine
-            Object t = cache.getIfPresent(cacheKey);
+            Object t = postCache.getIfPresent(cacheKey);
             if (t != null) {
                 postSearchVO = (PostSearchVO) t;
                 flag = true;
@@ -250,6 +251,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
             cacheUpdateDTO.setKey(cacheKey);
             cacheUpdateDTO.setValue(postSearchVO);
+            cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
             cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
             rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         } else {
@@ -527,6 +529,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, postIds.toArray());
 
         /* 清除post缓存 */
-        cacheService.clearCache(CacheConst.CACHE_POST_KEY_PATTERN);
+        CacheClearDTO cacheClearDTO = new CacheClearDTO();
+        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        cacheService.clearCache(cacheClearDTO);
     }
 }

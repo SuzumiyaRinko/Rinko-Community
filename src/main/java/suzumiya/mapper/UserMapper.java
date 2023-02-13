@@ -19,6 +19,8 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("SELECT is_famous FROM sys_user WHERE id = #{userId}")
     Boolean getIsFamousByUserId(@Param("userId") Long userId);
 
+    User getSimpleUserById(@Param("userId") Long userId);
+
     @Delete("DELETE FROM sys_user WHERE is_delete = 1")
     void tableLogicDataClear();
 }

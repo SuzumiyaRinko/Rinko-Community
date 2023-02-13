@@ -1,16 +1,21 @@
 package suzumiya;
 
+import com.github.pagehelper.PageInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
+import suzumiya.model.dto.CommentSelectDTO;
+import suzumiya.model.pojo.Comment;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
+import suzumiya.service.ICommentService;
 import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 
@@ -32,6 +37,12 @@ public class TestMySQL {
 
     @Autowired
     private IPostService postService;
+
+    @Autowired
+    private ICommentService commentService;
+
+    @Autowired
+    private CommentMapper commentMapper;
 
     @Autowired
     private PostMapper postMapper;
@@ -91,5 +102,37 @@ public class TestMySQL {
             return t;
         }).collect(Collectors.toList());
         postService.updateBatchById(posts);
+    }
+
+    @Test
+    void testCommentService() {
+        CommentSelectDTO commentSelectDTO = new CommentSelectDTO();
+        commentSelectDTO.setTargetType(CommentSelectDTO.TARGET_TYPE_POST);
+        commentSelectDTO.setTargetId(1L);
+        commentSelectDTO.setSelectType(CommentSelectDTO.SELECT_TYPE_DEFAULT);
+        commentSelectDTO.setSortType(CommentSelectDTO.SORT_TYPE_REVERSE);
+        commentSelectDTO.setPageNum(1);
+
+        PageInfo<Comment> select = commentService.select(commentSelectDTO);
+        int pageNum = select.getPageNum();
+        System.out.println("pageNum = " + pageNum);
+        int pageSize = select.getPageSize();
+        System.out.println("pageSize = " + pageSize);
+        long total = select.getTotal();
+        System.out.println("total = " + total);
+
+        List<Comment> list = select.getList();
+        for (Comment comment : list) {
+            System.out.println(comment);
+        }
+    }
+
+    @Test
+    void testgetFirst3Comments() {
+        List<String> first3comments = commentMapper.getFirst3CommentsByTargetId(1L);
+        System.out.println(first3comments);
+
+        first3comments = commentMapper.getFirst3CommentsByTargetId(2L);
+        System.out.println(first3comments);
     }
 }

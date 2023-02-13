@@ -8,9 +8,11 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CacheConst;
+import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.service.ICacheService;
 
+import javax.annotation.Resource;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,8 +20,11 @@ import java.util.Map;
 @Service
 public class CacheServiceImpl implements ICacheService {
 
-    @Autowired
-    private Cache<String, Object> cache; // Caffeine
+    @Resource(name = "userCache")
+    private Cache<String, Object> userCache; // Caffeine
+
+    @Resource(name = "postCache")
+    private Cache<String, Object> postCache; // Caffeine
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -30,9 +35,17 @@ public class CacheServiceImpl implements ICacheService {
         String key = cacheUpdateDTO.getKey();
         Object value = cacheUpdateDTO.getValue();
         int cacheType = cacheUpdateDTO.getCacheType();
+        int caffeineType = cacheUpdateDTO.getCaffeineType();
         Duration redisTTL = cacheUpdateDTO.getRedisTTL();
-        cache.put(key, value);
 
+        // Caffeine
+        if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
+            userCache.put(key, value);
+        } else {
+            postCache.put(key, value);
+        }
+
+        // Redis
         if (cacheType == CacheConst.VALUE_TYPE_SIMPLE) {
             redisTemplate.opsForValue().set(key, value, redisTTL);
         } else {
@@ -44,13 +57,24 @@ public class CacheServiceImpl implements ICacheService {
     }
 
     @Override
-    public void clearCache(String keyPattern) {
+    public void clearCache(CacheClearDTO cacheClearDTO) {
+        String keyPattern = cacheClearDTO.getKeyPattern();
+        int caffeineType = cacheClearDTO.getCaffeineType();
         /* 清除Caffeine和Redis缓存 */
-        Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
-        while (cursor.hasNext()) {
-            String cacheKey = cursor.next();
-            cache.invalidate(cacheKey);
-            redisTemplate.delete(cacheKey);
+        if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
+            Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
+            while (cursor.hasNext()) {
+                String cacheKey = cursor.next();
+                userCache.invalidate(cacheKey);
+                redisTemplate.delete(cacheKey);
+            }
+        } else {
+            Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
+            while (cursor.hasNext()) {
+                String cacheKey = cursor.next();
+                postCache.invalidate(cacheKey);
+                redisTemplate.delete(cacheKey);
+            }
         }
     }
 }

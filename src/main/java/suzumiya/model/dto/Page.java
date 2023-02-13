@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.util.List;
 
+// 用ES查询就要返回这个Page对象（MySQL查询用PageHelper）
 @Data
 public class Page<T> {
 
