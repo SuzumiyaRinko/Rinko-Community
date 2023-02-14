@@ -29,7 +29,6 @@ import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
-import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
@@ -41,7 +40,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -250,38 +248,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public User getSimpleUserById(Long userId) {
         String cacheKey = CacheConst.CACHE_USER_KEY + userId;
-        boolean flag = false;
-        User user = new User();
-        // 查询缓存
-        // Caffeine
-        Object t = userCache.getIfPresent(cacheKey);
-        if (t != null) {
-            user = (User) t;
-            flag = true;
-        }
+//        boolean flag = false;
+//        User user = new User();
+//        // 查询缓存
+//        // Caffeine
+//        Object t = userCache.getIfPresent(cacheKey);
+//        if (t != null) {
+//            user = (User) t;
+//            flag = true;
+//        }
+//
+//        // Redis
+//        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
+//        if (ObjectUtil.isNotEmpty(entries)) {
+//            BeanUtil.fillBeanWithMap(entries, user, null);
+//            flag = true;
+//        }
+//
+//        // DB
+//        if (!flag) {
+//            user = userMapper.getSimpleUserById(userId);
+//        }
+//
+//        // 构建或刷新Caffeine和Redis缓存（异步）
+//        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+//        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+//        cacheUpdateDTO.setKey(cacheKey);
+//        cacheUpdateDTO.setValue(user);
+//        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
+//        cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
+//        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
 
-        // Redis
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
-        if (ObjectUtil.isNotEmpty(entries)) {
-            BeanUtil.fillBeanWithMap(entries, user, null);
-            flag = true;
-        }
-
-        // DB
-        if (!flag) {
-            user = userMapper.getSimpleUserById(userId);
-        }
-
-        // 构建或刷新Caffeine和Redis缓存（异步）
-        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
-        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
-        cacheUpdateDTO.setKey(cacheKey);
-        cacheUpdateDTO.setValue(user);
-        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
-        cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
-
-        return user;
+        return (User) userCache.get(cacheKey, (xx) -> userMapper.getSimpleUserById(userId));
     }
 
     @Override
@@ -294,10 +292,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myId, targetId))) {
             /* 取消关注target */
             redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
+            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWER_KEY + targetId, myId);
             return IUserService.UNFOLLOW_SUCCESS;
         } else {
             /* 关注target */
             redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
+            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWER_KEY + targetId, myId);
             return IUserService.FOLLOW_SUCCESS;
         }
     }

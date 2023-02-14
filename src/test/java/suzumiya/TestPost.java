@@ -71,14 +71,14 @@ public class TestPost {
 
     @Test
     void testLike() throws InterruptedException {
-        postService.like(1L);
+        postService.like(2L);
         while (true) {
         }
     }
 
     @Test
     void testCollect() throws InterruptedException {
-        postService.collect(1L);
+        postService.collect(2L);
         while (true) {
         }
     }

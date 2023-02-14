@@ -117,7 +117,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //TODO 这两行代码不应该被注释掉
 //        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 //        post.setUserId(user.getId());
-        post.setUserId(1L); // 这行代码应该被注释掉
+        Long myId = 2L; // 这行代码应该被注释掉
+        post.setUserId(myId); // 这行代码应该被注释掉
 
         post.setCreateTime(LocalDateTime.now());
         postMapper.insert(post);
@@ -130,6 +131,21 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
         /* 清除post缓存（异步） */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
+        /* 发送系统消息（异步） */
+        Set<Object> members = redisTemplate.opsForSet().members(RedisConst.USER_FOLLOWER_KEY + myId);
+        if (ObjectUtil.isNotEmpty(members)) {
+            List<Long> followerIds = members.stream().map((id) -> ((Integer) id).longValue()).collect(Collectors.toList());
+            for (Long followerId : followerIds) {
+                /* 发送系统消息（异步） */
+                MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+                messageInsertDTO.setToUserId(followerId);
+                messageInsertDTO.setEventUserId(myId);
+                messageInsertDTO.setIsSystem(true);
+                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_FOLLOWING_POST);
+                messageInsertDTO.setPostId(post.getId());
+                rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+            }
+        }
     }
 
     @Override
@@ -141,7 +157,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         postRepository.deleteById(postId);
 
         /* 清除post缓存（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
+        CacheClearDTO cacheClearDTO = new CacheClearDTO();
+        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
     }
 
     @Override
@@ -194,7 +213,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         postRepository.save(t);
 
         /* 清除post缓存（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
+        CacheClearDTO cacheClearDTO = new CacheClearDTO();
+        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
     }
 
     @Override
@@ -464,29 +486,29 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //TODO 这2行代码不应该被注释掉
 //        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 //        Long userId = user.getId();
-        Long userId = 1L; // 这行代码应该被注释掉
+        Long myId = 1L; // 这行代码应该被注释掉
 
-        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_LIKE_LIST_KEY + postId, userId))) {
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_LIKE_LIST_KEY + postId, myId))) {
             /* 减少某个post的点赞数 */
             redisTemplate.opsForValue().decrement(RedisConst.POST_LIKE_COUNT_KEY + postId);
             /* 在该post的like列表中移除user */
-            redisTemplate.opsForSet().remove(RedisConst.POST_LIKE_LIST_KEY + postId, userId);
+            redisTemplate.opsForSet().remove(RedisConst.POST_LIKE_LIST_KEY + postId, myId);
         } else {
             /* 增加某个post的点赞数 */
             redisTemplate.opsForValue().increment(RedisConst.POST_LIKE_COUNT_KEY + postId);
             /* 在该post的like列表中增加user */
-            redisTemplate.opsForSet().add(RedisConst.POST_LIKE_LIST_KEY + postId, userId);
+            redisTemplate.opsForSet().add(RedisConst.POST_LIKE_LIST_KEY + postId, myId);
+            /* 发送系统消息（异步） */
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+
+            MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+            messageInsertDTO.setToUserId(toUserId);
+            messageInsertDTO.setEventUserId(myId);
+            messageInsertDTO.setIsSystem(true);
+            messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_LIKE);
+            messageInsertDTO.setPostId(postId);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
         }
-
-        /* 发送系统消息（异步） */
-        Long toUserId = postMapper.getUserIdByPostId(postId);
-
-        MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
-        messageInsertDTO.setToUserId(toUserId);
-        messageInsertDTO.setIsSystem(true);
-        messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_LIKE);
-        messageInsertDTO.setPostId(postId);
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
     }
 
     @Override
@@ -494,29 +516,29 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //TODO 这2行代码不应该被注释掉
 //        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 //        Long userId = user.getId();
-        Long userId = 1L; // 这行代码应该被注释掉
+        Long myId = 1L; // 这行代码应该被注释掉
 
-        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_COLLECTIONS_KEY + userId, postId))) {
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_COLLECTIONS_KEY + myId, postId))) {
             /* 减少某个post的收藏数 */
             redisTemplate.opsForValue().decrement(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
             /* 在该user的collection列表中移除post */
-            redisTemplate.opsForSet().remove(RedisConst.USER_COLLECTIONS_KEY + userId, postId);
+            redisTemplate.opsForSet().remove(RedisConst.USER_COLLECTIONS_KEY + myId, postId);
         } else {
             /* 增加某个post的收藏数 */
             redisTemplate.opsForValue().increment(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
             /* 在该user的collection列表中增加post */
-            redisTemplate.opsForSet().add(RedisConst.USER_COLLECTIONS_KEY + userId, postId);
+            redisTemplate.opsForSet().add(RedisConst.USER_COLLECTIONS_KEY + myId, postId);
+            /* 发送系统消息（异步） */
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+
+            MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+            messageInsertDTO.setToUserId(toUserId);
+            messageInsertDTO.setEventUserId(myId);
+            messageInsertDTO.setIsSystem(true);
+            messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COLLECT);
+            messageInsertDTO.setPostId(postId);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
         }
-
-        /* 发送系统消息（异步） */
-        Long toUserId = postMapper.getUserIdByPostId(postId);
-
-        MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
-        messageInsertDTO.setToUserId(toUserId);
-        messageInsertDTO.setIsSystem(true);
-        messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COLLECT);
-        messageInsertDTO.setPostId(postId);
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
     }
 
     @Override

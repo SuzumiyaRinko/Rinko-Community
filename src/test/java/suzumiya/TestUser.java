@@ -31,4 +31,12 @@ public class TestUser {
         while (true) {
         }
     }
+
+    @Test
+    void testFollow() {
+        userService.follow(2L);
+        while (true) {
+
+        }
+    }
 }

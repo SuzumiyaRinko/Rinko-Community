@@ -40,6 +40,9 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     private Cache<String, Object> userCache; // Caffeine
 
     @Autowired
+    private IUserService userService;
+
+    @Autowired
     private UserMapper userMapper;
 
     @Autowired
@@ -47,9 +50,6 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
     @Autowired
     private CommentMapper commentMapper;
-
-    @Autowired
-    private IUserService userService;
 
     @Autowired
     private MessageMapper messageMapper;
@@ -68,19 +68,22 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
         if (messageInsertDTO.getIsSystem()) {
             message.setFromUserId(0L);
-            User simpleUser = userService.getSimpleUserById(messageInsertDTO.getToUserId());
+            User eventUser = userService.getSimpleUserById(messageInsertDTO.getEventUserId());
             String title = postMapper.getTitleByPostId(messageInsertDTO.getPostId());
             int systemMsgType = messageInsertDTO.getSystemMsgType();
             // 3种系统消息
             if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_LIKE) {
                 message.setPostId(messageInsertDTO.getPostId());
-                message.setContent(simpleUser.getNickname() + " 给你的帖子 \"" + title + "\" 点了个赞");
+                message.setContent(eventUser.getNickname() + " 给你的帖子 \"" + title + "\" 点了个赞");
             } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_COLLECT) {
                 message.setPostId(messageInsertDTO.getPostId());
-                message.setContent(simpleUser.getNickname() + " 收藏了你的帖子 \"" + title + "\"");
+                message.setContent(eventUser.getNickname() + " 收藏了你的帖子 \"" + title + "\"");
             } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_COMMENT) {
                 message.setPostId(messageInsertDTO.getPostId());
-                message.setContent(simpleUser.getNickname() + " 评论了你的帖子");
+                message.setContent(eventUser.getNickname() + " 评论了你的帖子");
+            } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_FOLLOWING_POST) {
+                message.setPostId(messageInsertDTO.getPostId());
+                message.setContent("你关注的po主 \"" + eventUser.getNickname() + "\" 发布了一个帖子 \"" + title + "\"");
             }
         } else {
             message.setFromUserId(messageInsertDTO.getFromUserId());
