@@ -34,4 +34,7 @@ public interface IPostService extends IService<Post> {
 
     /* 收藏或取消收藏 */
     void collect(Long postId);
+
+    /* 根据postId获取post */
+    Post getPostByPostId(Long postId);
 }

@@ -5,7 +5,7 @@
     <!-- List<String> getFirst3CommentsByTargetId(@Param("targetId") Long targetId) -->
     <select id="getFirst3CommentsByTargetId" resultType="java.lang.String">
         SELECT content
-        FROM tb_comment WHERE target_id = #{targetId} AND target_type = 2
+        FROM tb_comment WHERE target_id = #{targetId} AND target_type = 2 AND is_delete = 0
         LIMIT 0, 3
     </select>
 </mapper>

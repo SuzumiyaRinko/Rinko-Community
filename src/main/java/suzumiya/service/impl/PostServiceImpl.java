@@ -34,6 +34,7 @@ import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.*;
 import suzumiya.model.pojo.Post;
+import suzumiya.model.pojo.User;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
@@ -240,15 +241,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 // 解析结果
                 postSearchVO = parseSearchHits(postSearchDTO, searchHits);
             }
-
-            /* 构建或刷新Caffeine和Redis缓存（异步） */
-            CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
-            cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
-            cacheUpdateDTO.setKey(cacheKey);
-            cacheUpdateDTO.setValue(postSearchVO);
-            cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-            cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
-            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         } else {
             /* 查询ES */
             // 根据HotelSearchDTO生成SearchQuery对象
@@ -257,6 +249,25 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
             // 解析结果
             postSearchVO = parseSearchHits(postSearchDTO, searchHits);
+        }
+
+        List<Post> posts = postSearchVO.getPage().getData();
+        for (Post post : posts) {
+            Long postUserId = post.getUserId();
+            User simpleUser = userMapper.getSimpleUserById(postUserId);
+            post.setPostUser(simpleUser);
+        }
+
+        /* 判断是否需要缓存该postSearchVO对象 */
+        if (isCache) {
+            /* 构建或刷新Caffeine和Redis缓存（异步） */
+            CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+            cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+            cacheUpdateDTO.setKey(cacheKey);
+            cacheUpdateDTO.setValue(postSearchVO);
+            cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+            cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         }
 
         return postSearchVO;
@@ -506,6 +517,11 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COLLECT);
         messageInsertDTO.setPostId(postId);
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+    }
+
+    @Override
+    public Post getPostByPostId(Long postId) {
+        return postMapper.selectById(postId);
     }
 
     @Override

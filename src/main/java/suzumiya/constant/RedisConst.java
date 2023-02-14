@@ -17,6 +17,8 @@ public class RedisConst {
     public static final String USER_FOLLOWING_KEY = "user:following:"; // user:following:{userId}
     // 某个user的follower的set集合
     public static final String USER_FOLLOWER_KEY = "user:follower:"; // user:follower:{userId}
+    // 某个user的私信对象的set集合
+    public static final String USER_MESSAGE_KEY = "user:message:"; // user:message:{userId}
 
     /* Post */
     // 要刷新分数的post集合

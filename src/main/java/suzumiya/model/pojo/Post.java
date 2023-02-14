@@ -69,4 +69,8 @@ public class Post implements Serializable {
     @JsonIgnore
     @TableField(exist = false)
     private String searchField;
+
+    // 评论的用户的部分信息（id, nickname, avatar）
+    @TableField(exist = false)
+    public User postUser;
 }

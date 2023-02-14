@@ -18,7 +18,7 @@
     <select id="getUserById" resultType="User" resultMap="getUserByIdResultMap">
         SELECT
         <include refid="BASE_COLUMNS"/>
-        FROM sys_user WHERE id = #{userId}
+        FROM sys_user WHERE id = #{userId} AND is_delete = 0
     </select>
 
     <!-- List<String> getAuthoritiesStrByUserId(Long userId) -->
@@ -28,13 +28,24 @@
         ON ur.role_id = ra.role_id
         JOIN sys_authority a
         ON ra.authority_id = a.id
-        WHERE user_id = #{userId};
+        WHERE user_id = #{userId} AND is_delete = 0
     </select>
 
     <!-- User getSimpleUserById(@Param("userId") Long userId) -->
     <select id="getSimpleUserById" resultType="User">
         SELECT
         <include refid="SIMPLE_COLUMNS"/>
-        FROM sys_user WHERE id = #{userId}
+        FROM sys_user WHERE id = #{userId} AND is_delete = 0
+    </select>
+
+    <!-- List<User> getFollowings(@Param("followingIds") List<Long> followingIds) -->
+    <select id="getFollowings" resultType="User">
+        SELECT
+        <include refid="SIMPLE_COLUMNS"/>
+        FROM sys_user WHERE id IN
+        <foreach collection="followingIds" item="followingId" separator="," open="(" close=")">
+            #{followingId}
+        </foreach>
+        AND is_delete = 0
     </select>
 </mapper>

@@ -21,6 +21,8 @@ public interface UserMapper extends BaseMapper<User> {
 
     User getSimpleUserById(@Param("userId") Long userId);
 
+    List<User> getFollowings(@Param("followingIds") List<Long> followingIds);
+
     @Delete("DELETE FROM sys_user WHERE is_delete = 1")
     void tableLogicDataClear();
 }

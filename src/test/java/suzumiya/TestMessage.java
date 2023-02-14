@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import suzumiya.model.dto.MessageInsertDTO;
+import suzumiya.model.dto.MessageSelectDTO;
+import suzumiya.model.vo.MessageSelectVO;
 import suzumiya.service.IMessageService;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -26,5 +28,23 @@ public class TestMessage {
         messageInsertDTO.setToUserId(1L);
         messageInsertDTO.setContent("这是消息正文");
         messageService.sendMessage(messageInsertDTO);
+    }
+
+    @Test
+    void testGetMessages() {
+        MessageSelectDTO messageSelectDTO = new MessageSelectDTO();
+        messageSelectDTO.setIsSystem(false);
+        MessageSelectVO messages = messageService.getMessages(messageSelectDTO);
+        System.out.println(messages.getMessages());
+    }
+
+    @Test
+    void testGetChatMessages() {
+        MessageSelectDTO messageSelectDTO = new MessageSelectDTO();
+        messageSelectDTO.setIsSystem(false);
+        messageSelectDTO.setTargetId(2L);
+        MessageSelectVO messages = messageService.getChatMessages(messageSelectDTO);
+        System.out.println(messages.getMessages());
+        System.out.println(messages.getLastId());
     }
 }

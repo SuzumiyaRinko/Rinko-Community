@@ -14,5 +14,6 @@
         <foreach collection="postIds" item="postId" separator="," open="(" close=")">
             #{postId}
         </foreach>
+        AND is_delete = 0
     </select>
 </mapper>

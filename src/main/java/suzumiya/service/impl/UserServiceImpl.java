@@ -32,6 +32,7 @@ import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
+import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.service.IUserService;
 
 import javax.annotation.Resource;
@@ -41,10 +42,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService, UserDetailsService {
@@ -155,7 +155,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         HttpServletRequest request = requestAttributes.getRequest();
         String ip = request.getRemoteHost().replaceAll(":", "-"); // 原ip大概是 0:0:0:0:0:0:0:1
         Object t = redisTemplate.opsForValue().get(RedisConst.REGISTER_TIMES_KEY + ip);
-        if(t != null && (int) t % 5 == 0) {
+        if (t != null && (int) t % 5 == 0) {
             throw new RuntimeException("当天注册次数已到达5次，请在24小时后再尝试注册");
         }
 
@@ -282,6 +282,59 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
 
         return user;
+    }
+
+    @Override
+    public int follow(Long targetId) {
+        //TODO 这2行代码不应该被注释掉
+//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        Long myId = user.getId();
+        Long myId = 1L; // 这行代码应该被注释掉
+
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myId, targetId))) {
+            /* 取消关注target */
+            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
+            return IUserService.UNFOLLOW_SUCCESS;
+        } else {
+            /* 关注target */
+            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
+            return IUserService.FOLLOW_SUCCESS;
+        }
+    }
+
+    @Override
+    public FollowingSelectVO getFollowings(Long lastId) {
+        //TODO 这2行代码不应该被注释掉
+//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        Long myId = user.getId();
+        Long myId = 1L; // 这行代码应该被注释掉
+
+        /* 获取本次查询的followingIds */
+        List<User> followings = new ArrayList<>();
+        List<Long> followingIds;
+        if (lastId == null) {
+            Set<Object> range = redisTemplate.opsForZSet().range(RedisConst.USER_FOLLOWING_KEY + myId, 0, IUserService.FOLLOWINGS_STANDARD_PAGE_SIZE - 1);
+            followingIds = range.stream().map((id) -> ((Integer) id).longValue()).collect(Collectors.toList());
+        } else {
+            Long lastIdRank = redisTemplate.opsForZSet().rank(RedisConst.USER_FOLLOWING_KEY + myId, lastId);
+            Set<Object> range = redisTemplate.opsForZSet().range(RedisConst.USER_FOLLOWING_KEY + myId, lastIdRank + 1, lastIdRank + IUserService.FOLLOWINGS_STANDARD_PAGE_SIZE);
+            followingIds = range.stream().map((id) -> ((Integer) id).longValue()).collect(Collectors.toList());
+        }
+
+        /* 查询 */
+        if (ObjectUtil.isNotEmpty(followingIds)) {
+            for (Long followingId : followingIds) {
+                User simpleUserById = this.getSimpleUserById(followingId);
+                followings.add(simpleUserById);
+            }
+        }
+
+        lastId = followings.get(followings.size() - 1).getId();
+
+        FollowingSelectVO followingSelectVO = new FollowingSelectVO();
+        followingSelectVO.setFollowings(followings);
+        followingSelectVO.setLastId(lastId);
+        return followingSelectVO;
     }
 
     private boolean checkLogin(Serializable userId) {

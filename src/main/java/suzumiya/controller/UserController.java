@@ -1,15 +1,14 @@
 package suzumiya.controller;
 
-import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import suzumiya.constant.CommonConst;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.BaseResponse;
-import suzumiya.util.ResponseGenerator;
+import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.service.IUserService;
+import suzumiya.util.ResponseGenerator;
 
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
@@ -49,5 +48,23 @@ public class UserController {
     public void activate(HttpServletResponse response, @PathVariable("uuid") String uuid) throws IOException {
         /* 激活用户（激活页面在Service层返回） */
         userService.activate(uuid, response);
+    }
+
+    @PostMapping("/follow/{targetId}")
+    public BaseResponse<Object> follow(@PathVariable("targetId") Long targetId) {
+        /* 关注 / 取消关注 */
+        int result = userService.follow(targetId);
+        if (result == IUserService.FOLLOW_SUCCESS) {
+            return ResponseGenerator.returnOK("已关注该用户", null);
+        } else {
+            return ResponseGenerator.returnOK("已取消关注该用户", null);
+        }
+    }
+
+    @GetMapping("/following")
+    public BaseResponse<FollowingSelectVO> getFollowings(@RequestParam(name = "lastId", required = false) Long lastId) {
+        /* 获取当前用户的关注列表 */
+        FollowingSelectVO followingSelectVO = userService.getFollowings(lastId);
+        return ResponseGenerator.returnOK("查询关注列表成功", followingSelectVO);
     }
 }
