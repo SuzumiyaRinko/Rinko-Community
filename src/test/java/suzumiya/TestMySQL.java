@@ -12,10 +12,12 @@ import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.CommentSelectDTO;
+import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Comment;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
+import suzumiya.service.IMessageService;
 import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 
@@ -40,6 +42,9 @@ public class TestMySQL {
 
     @Autowired
     private ICommentService commentService;
+
+    @Autowired
+    private IMessageService messageService;
 
     @Autowired
     private CommentMapper commentMapper;
@@ -134,5 +139,13 @@ public class TestMySQL {
 
         first3comments = commentMapper.getFirst3CommentsByTargetId(2L);
         System.out.println(first3comments);
+    }
+
+    @Test
+    void testSendMessage() {
+        MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+        messageInsertDTO.setContent("juejue");
+        messageInsertDTO.setIsSystem(true);
+        messageService.sendMessage(messageInsertDTO);
     }
 }

@@ -13,6 +13,10 @@ public class RedisConst {
     public static final String REGISTER_TIMES_KEY = "registerTimes:"; // registerTimes:{ip}
     // 某个user的collection的set集合
     public static final String USER_COLLECTIONS_KEY = "user:collections:"; // user:collections:{userId}
+    // 某个user的following的set集合
+    public static final String USER_FOLLOWING_KEY = "user:following:"; // user:following:{userId}
+    // 某个user的follower的set集合
+    public static final String USER_FOLLOWER_KEY = "user:follower:"; // user:follower:{userId}
 
     /* Post */
     // 要刷新分数的post集合

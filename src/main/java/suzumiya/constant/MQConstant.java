@@ -34,4 +34,9 @@ public class MQConstant {
     // 删除缓存
     public static final String CACHE_CLEAR_QUEUE = "cache.clear.queue";
     public static final String CACHE_CLEAR_KEY = "cache.clear";
+
+    /* Message */
+    // 发送消息
+    public static final String MESSAGE_INSERT_QUEUE = "message.insert.queue";
+    public static final String MESSAGE_INSERT_KEY = "message.insert";
 }

@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 
-import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -22,4 +21,7 @@ public interface IUserService extends IService<User> {
 
     /* 用户激活 */
     void activate(String uuid, HttpServletResponse response) throws IOException;
+
+    /* 获取用户的简单信息（多级缓存） */
+    User getSimpleUserById(Long userId);
 }

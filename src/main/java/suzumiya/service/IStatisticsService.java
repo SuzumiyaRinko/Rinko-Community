@@ -1,8 +1,8 @@
 package suzumiya.service;
 
-import suzumiya.model.dto.StatisticsDTO;
+import suzumiya.model.dto.StatisticsQueryDTO;
 
 public interface IStatisticsService {
 
-    Long getRangeUV(StatisticsDTO statisticsDTO);
+    Long getRangeUV(StatisticsQueryDTO statisticsDTO);
 }

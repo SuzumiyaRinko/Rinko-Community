@@ -2,10 +2,12 @@ package suzumiya.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.lang.UUID;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.jwt.JWTUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -22,10 +24,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
+import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.service.IUserService;
@@ -36,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +54,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Resource
     private RabbitTemplate rabbitTemplate;
+
+    @Resource(name = "userCache")
+    private Cache<String, Object> userCache; // Caffeine
 
     @Autowired
     @Lazy
@@ -237,6 +245,43 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                     .replaceAll("<xxxxx>", existedUser.getUsername())
                     .replaceAll("<yyyyy>", CommonConst.USER_LOGIN_URL));
         }
+    }
+
+    @Override
+    public User getSimpleUserById(Long userId) {
+        String cacheKey = CacheConst.CACHE_USER_KEY + userId;
+        boolean flag = false;
+        User user = new User();
+        // 查询缓存
+        // Caffeine
+        Object t = userCache.getIfPresent(cacheKey);
+        if (t != null) {
+            user = (User) t;
+            flag = true;
+        }
+
+        // Redis
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
+        if (ObjectUtil.isNotEmpty(entries)) {
+            BeanUtil.fillBeanWithMap(entries, user, null);
+            flag = true;
+        }
+
+        // DB
+        if (!flag) {
+            user = userMapper.getSimpleUserById(userId);
+        }
+
+        // 构建或刷新Caffeine和Redis缓存（异步）
+        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+        cacheUpdateDTO.setKey(cacheKey);
+        cacheUpdateDTO.setValue(user);
+        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
+        cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
+
+        return user;
     }
 
     private boolean checkLogin(Serializable userId) {

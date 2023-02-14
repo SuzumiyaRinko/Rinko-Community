@@ -13,16 +13,11 @@ import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.Aggregations;
-import org.elasticsearch.search.aggregations.BucketOrder;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.elasticsearch.core.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
@@ -348,10 +343,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         );
 
         /* 构建聚合 */
-        int len = aggsNames.length;
-        for (int i = 0; i <= len - 1; i++) {
-            builder.withAggregations(AggregationBuilders.terms(aggsNames[i]).field(aggsFieldNames[i]).size(31).order(BucketOrder.aggregation("_count", false)));
-        }
+//        int len = aggsNames.length;
+//        for (int i = 0; i <= len - 1; i++) {
+//            builder.withAggregations(AggregationBuilders.terms(aggsNames[i]).field(aggsFieldNames[i]).size(31).order(BucketOrder.aggregation("_count", false)));
+//        }
 
         /* 获得并返回SearchQuery对象 */
         return builder.build();
@@ -413,26 +408,26 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         }
 
         /* 解析聚合结果 */
-        Map<String, List<String>> aggregationResult = new HashMap<>();
-        if (searchHits.hasAggregations()) {
-            ElasticsearchAggregations t = (ElasticsearchAggregations) searchHits.getAggregations();
-            Aggregations aggregations = t.aggregations();
-
-            int len = aggsNames.length;
-            for (int i = 0; i <= len - 1; i++) {
-                Terms terms = aggregations.get(aggsNames[i]);
-                List<? extends Terms.Bucket> buckets = terms.getBuckets();
-                if (buckets.size() == 0) {
-                    continue; // 可能有"无聚合结果"的时候（比如目前暂时没有文档）
-                }
-                List<Integer> tagIDs = new ArrayList<>(); // tagIDs
-                for (Terms.Bucket bucket : buckets) {
-                    tagIDs.add(bucket.getKeyAsNumber().intValue());
-                }
-                List<String> tagsStr = tagMapper.getAllNameByTagIDs(tagIDs);
-                aggregationResult.put(aggsResultNames[i], tagsStr);
-            }
-        }
+//        Map<String, List<String>> aggregationResult = new HashMap<>();
+//        if (searchHits.hasAggregations()) {
+//            ElasticsearchAggregations t = (ElasticsearchAggregations) searchHits.getAggregations();
+//            Aggregations aggregations = t.aggregations();
+//
+//            int len = aggsNames.length;
+//            for (int i = 0; i <= len - 1; i++) {
+//                Terms terms = aggregations.get(aggsNames[i]);
+//                List<? extends Terms.Bucket> buckets = terms.getBuckets();
+//                if (buckets.size() == 0) {
+//                    continue; // 可能有"无聚合结果"的时候（比如目前暂时没有文档）
+//                }
+//                List<Integer> tagIDs = new ArrayList<>(); // tagIDs
+//                for (Terms.Bucket bucket : buckets) {
+//                    tagIDs.add(bucket.getKeyAsNumber().intValue());
+//                }
+//                List<String> tagsStr = tagMapper.getAllNameByTagIDs(tagIDs);
+//                aggregationResult.put(aggsResultNames[i], tagsStr);
+//            }
+//        }
 
         /* 返回结果 */
         PostSearchVO postSearchVO = new PostSearchVO();
@@ -449,7 +444,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         // 查询结果
         page.setData(postsResult);
         postSearchVO.setPage(page);
-        postSearchVO.setAggregations(aggregationResult);
+//        postSearchVO.setAggregations(aggregationResult);
         return postSearchVO;
     }
 
@@ -472,7 +467,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             redisTemplate.opsForSet().add(RedisConst.POST_LIKE_LIST_KEY + postId, userId);
         }
 
-        //TODO 发系统消息
+        /* 发送系统消息（异步） */
+        Long toUserId = postMapper.getUserIdByPostId(postId);
+
+        MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+        messageInsertDTO.setToUserId(toUserId);
+        messageInsertDTO.setIsSystem(true);
+        messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_LIKE);
+        messageInsertDTO.setPostId(postId);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
     }
 
     @Override
@@ -482,19 +485,27 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 //        Long userId = user.getId();
         Long userId = 1L; // 这行代码应该被注释掉
 
-        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId))) {
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_COLLECTIONS_KEY + userId, postId))) {
             /* 减少某个post的收藏数 */
             redisTemplate.opsForValue().decrement(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
-            /* 在该post的collection列表中移除user */
-            redisTemplate.opsForSet().remove(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId);
+            /* 在该user的collection列表中移除post */
+            redisTemplate.opsForSet().remove(RedisConst.USER_COLLECTIONS_KEY + userId, postId);
         } else {
             /* 增加某个post的收藏数 */
             redisTemplate.opsForValue().increment(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
-            /* 在该post的collection列表中增加user */
-            redisTemplate.opsForSet().add(RedisConst.POST_COLLECTION_LIST_KEY + postId, userId);
+            /* 在该user的collection列表中增加post */
+            redisTemplate.opsForSet().add(RedisConst.USER_COLLECTIONS_KEY + userId, postId);
         }
 
-        //TODO 发系统消息
+        /* 发送系统消息（异步） */
+        Long toUserId = postMapper.getUserIdByPostId(postId);
+
+        MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+        messageInsertDTO.setToUserId(toUserId);
+        messageInsertDTO.setIsSystem(true);
+        messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COLLECT);
+        messageInsertDTO.setPostId(postId);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
     }
 
     @Override

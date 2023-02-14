@@ -90,4 +90,8 @@ public class TestRedis {
         }
         System.out.println();
     }
+
+    @Test
+    void testMGet() {
+    }
 }

@@ -1,6 +1,5 @@
 package suzumiya;
 
-import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -24,9 +23,6 @@ public class TestPost {
 
     @Autowired
     private IPostService postService;
-
-    @Autowired
-    private Cache<String, Object> cache; // Caffeine
 
     @Test
     void testPostInsert() throws InterruptedException {
@@ -74,12 +70,16 @@ public class TestPost {
     }
 
     @Test
-    void testLike() {
+    void testLike() throws InterruptedException {
         postService.like(1L);
+        while (true) {
+        }
     }
 
     @Test
-    void testCollect() {
+    void testCollect() throws InterruptedException {
         postService.collect(1L);
+        while (true) {
+        }
     }
 }

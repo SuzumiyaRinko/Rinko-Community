@@ -15,9 +15,11 @@ import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
+import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
+import suzumiya.service.IMessageService;
 import suzumiya.util.MailUtils;
 
 import javax.annotation.Resource;
@@ -31,6 +33,9 @@ public class MQConsumer {
 
     @Autowired
     private ICacheService cacheService;
+
+    @Autowired
+    private IMessageService messageService;
 
     @Resource(name = "userCache")
     private Cache<String, Object> userCache; // Caffeine
@@ -120,6 +125,17 @@ public class MQConsumer {
         cacheService.clearCache(cacheClearDTO);
 
         log.debug("清除Caffeine和Redis缓存, keyPattern={}", cacheClearDTO.getKeyPattern());
+    }
+
+    /* 监听Message发送接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.MESSAGE_INSERT_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.MESSAGE_INSERT_KEY}
+    ))
+    public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) {
+        /* 发送消息 */
+        messageService.sendMessage(messageInsertDTO);
     }
 
     // DelayQueue：监听用户激活时间是否结束

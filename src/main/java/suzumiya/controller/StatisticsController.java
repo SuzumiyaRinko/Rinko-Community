@@ -1,11 +1,13 @@
 package suzumiya.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import suzumiya.model.dto.StatisticsDTO;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import suzumiya.model.dto.StatisticsQueryDTO;
 import suzumiya.model.vo.BaseResponse;
-import suzumiya.util.ResponseGenerator;
 import suzumiya.service.IStatisticsService;
+import suzumiya.util.ResponseGenerator;
 
 @RestController
 @RequestMapping("/statistics")
@@ -15,8 +17,8 @@ public class StatisticsController {
     private IStatisticsService statisticsService;
 
     @GetMapping("/rangeUV")
-    public BaseResponse<Long> getRangeUV(StatisticsDTO statisticsDTO) {
-        Long rangeUV = statisticsService.getRangeUV(statisticsDTO);
+    public BaseResponse<Long> getRangeUV(StatisticsQueryDTO statisticsQueryDTO) {
+        Long rangeUV = statisticsService.getRangeUV(statisticsQueryDTO);
         return ResponseGenerator.returnOK("查询区间UV成功", rangeUV);
     }
 }

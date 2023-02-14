@@ -1,7 +1,5 @@
 package suzumiya.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -11,27 +9,24 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.UserMapper;
-import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.CommentInsertDTO;
 import suzumiya.model.dto.CommentSelectDTO;
+import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Comment;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
+import suzumiya.service.IUserService;
 import suzumiya.util.WordTreeUtils;
 
 import javax.annotation.Resource;
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements ICommentService {
@@ -44,6 +39,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Resource(name = "userCache")
     private Cache<String, Object> userCache; // Caffeine
+
+    @Autowired
+    private IUserService userService;
 
     @Autowired
     private UserMapper userMapper;
@@ -78,12 +76,22 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         comment.setTargetType(commentInsertDTO.getType());
         comment.setTargetId(commentInsertDTO.getTargetId());
-        comment.setCreateTime(LocalDateTime.now());
         commentMapper.insert(comment);
 
         if (commentInsertDTO.getType() == CommentInsertDTO.COMMENT_TYPE_2POST) {
             /* 添加到待算分Post的Set集合 */
             redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, commentInsertDTO.getTargetId());
+
+            /* 发送系统消息（异步） */
+            Long postId = commentInsertDTO.getTargetId();
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+
+            MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+            messageInsertDTO.setToUserId(toUserId);
+            messageInsertDTO.setIsSystem(true);
+            messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COMMENT);
+            messageInsertDTO.setPostId(postId);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
         }
     }
 
@@ -148,40 +156,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         List<Comment> comments = commentMapper.selectList(queryWrapper);
         // 2.4 获取User信息
         for (Comment comment : comments) {
-            Long userId = comment.getUserId();
-            String cacheKey = CacheConst.CACHE_USER_KEY + userId;
-            boolean flag = false;
-            User user = null;
-            // 2.4.1 查询缓存
-            // Caffeine
-            Object t = userCache.getIfPresent(cacheKey);
-            if (t != null) {
-                user = (User) t;
-                flag = true;
-            }
-
-            // Redis
-            Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
-            if (ObjectUtil.isNotEmpty(entries)) {
-                BeanUtil.fillBeanWithMap(entries, user, null);
-                flag = true;
-            }
-
-            // DB
-            if (!flag) {
-                user = userMapper.getSimpleUserById(userId);
-            }
-
-            comment.setCommentUser(user);
-
-            // 2.4.2 构建或刷新Caffeine和Redis缓存（异步）
-            CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
-            cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
-            cacheUpdateDTO.setKey(cacheKey);
-            cacheUpdateDTO.setValue(user);
-            cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
-            cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
-            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
+            User simpleUser = userService.getSimpleUserById(comment.getUserId());
+            comment.setCommentUser(simpleUser);
         }
         // 2.5 判断是否需要返回targetId的前3条comment
         if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {

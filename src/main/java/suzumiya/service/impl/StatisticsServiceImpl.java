@@ -3,7 +3,7 @@ package suzumiya.service.impl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import suzumiya.model.dto.StatisticsDTO;
+import suzumiya.model.dto.StatisticsQueryDTO;
 import suzumiya.service.IStatisticsService;
 
 import java.time.LocalDate;
@@ -21,16 +21,16 @@ public class StatisticsServiceImpl implements IStatisticsService {
     private final DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @Override
-    public Long getRangeUV(StatisticsDTO statisticsDTO) {
+    public Long getRangeUV(StatisticsQueryDTO statisticsDTO) {
         /* 判断null */
         LocalDate start = statisticsDTO.getStart();
         LocalDate end = statisticsDTO.getEnd();
-        if(start == null || end == null) {
+        if (start == null || end == null) {
             return null;
         }
 
         /* 判断参数是否有效 */
-        if(start.isAfter(end)) {
+        if (start.isAfter(end)) {
             return null;
         }
 
