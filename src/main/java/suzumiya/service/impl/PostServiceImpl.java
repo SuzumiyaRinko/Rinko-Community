@@ -222,6 +222,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
         PostSearchVO postSearchVO = new PostSearchVO();
+
+        String searchKey = postSearchDTO.getSearchKey();
         long userId = postSearchDTO.getUserId();
         int sortType = postSearchDTO.getSortType();
         int pageNum = postSearchDTO.getPageNum();
@@ -230,10 +232,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         boolean flag = false;
 
         /* 判断isCache和cacheKey */
-        if (userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
+        if (StrUtil.isNotBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
             isCache = true;
             cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum;
-        } else if (userId <= 0) {
+        } else if (StrUtil.isNotBlank(searchKey) && userId <= 0) {
             isCache = true;
             cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
         }

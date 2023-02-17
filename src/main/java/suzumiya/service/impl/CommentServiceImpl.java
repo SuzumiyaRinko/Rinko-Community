@@ -74,13 +74,18 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 //        comment.setUserId(user.getId());
         comment.setUserId(1L); // 这行代码应该被注释掉
 
-        comment.setTargetType(commentInsertDTO.getType());
-        comment.setTargetId(commentInsertDTO.getTargetId());
+        Integer targetType = commentInsertDTO.getType();
+        Long targetId = commentInsertDTO.getTargetId();
+        comment.setTargetType(targetType);
+        comment.setTargetId(targetId);
         commentMapper.insert(comment);
 
-        if (commentInsertDTO.getType() == CommentInsertDTO.COMMENT_TYPE_2POST) {
+        if (targetType == CommonConst.COMMENT_TYPE_2POST) {
+            /* comment数 +1 */
+            redisTemplate.opsForValue().increment(RedisConst.POST_COMMENT_COUNT_KEY + targetId);
+
             /* 添加到待算分Post的Set集合 */
-            redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, commentInsertDTO.getTargetId());
+            redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, targetId);
 
             /* 发送系统消息（异步） */
             Long postId = commentInsertDTO.getTargetId();
@@ -97,11 +102,18 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     public void delete(Long commentId) {
+        Integer targetId = commentMapper.getTargetIdByCommentId(commentId);
+        Integer targetType = commentMapper.getTargetTypeByCommentId(commentId);
+
         /* 在MySQL把comment逻辑删除 */
         commentMapper.deleteById(commentId);
 
-        /* 添加到待算分Post的Set集合 */
-        redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, commentId);
+        if (targetType == CommonConst.COMMENT_TYPE_2POST) {
+            /* comment数 -1 */
+            redisTemplate.opsForValue().decrement(RedisConst.POST_COMMENT_COUNT_KEY + targetId);
+            /* 添加到待算分Post的Set集合 */
+            redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, commentId);
+        }
     }
 
     @Override
@@ -118,7 +130,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         int pageNum = commentSelectDTO.getPageNum();
 
         /* 查询结果并返回 */
-        // 1 判断targetType
+        // 1 判断目标是否存在
         Post existedPost = null;
         Comment existedComment = null;
         if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {

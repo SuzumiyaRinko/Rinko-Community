@@ -248,37 +248,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public User getSimpleUserById(Long userId) {
         String cacheKey = CacheConst.CACHE_USER_KEY + userId;
-//        boolean flag = false;
-//        User user = new User();
-//        // 查询缓存
-//        // Caffeine
-//        Object t = userCache.getIfPresent(cacheKey);
-//        if (t != null) {
-//            user = (User) t;
-//            flag = true;
-//        }
-//
-//        // Redis
-//        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
-//        if (ObjectUtil.isNotEmpty(entries)) {
-//            BeanUtil.fillBeanWithMap(entries, user, null);
-//            flag = true;
-//        }
-//
-//        // DB
-//        if (!flag) {
-//            user = userMapper.getSimpleUserById(userId);
-//        }
-//
-//        // 构建或刷新Caffeine和Redis缓存（异步）
-//        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
-//        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
-//        cacheUpdateDTO.setKey(cacheKey);
-//        cacheUpdateDTO.setValue(user);
-//        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
-//        cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
-//        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
-
         return (User) userCache.get(cacheKey, (xx) -> userMapper.getSimpleUserById(userId));
     }
 

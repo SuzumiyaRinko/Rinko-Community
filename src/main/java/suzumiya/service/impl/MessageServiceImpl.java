@@ -20,6 +20,7 @@ import suzumiya.model.pojo.User;
 import suzumiya.model.vo.MessageSelectVO;
 import suzumiya.service.IMessageService;
 import suzumiya.service.IUserService;
+import suzumiya.util.RedisUtils;
 import suzumiya.util.WordTreeUtils;
 
 import javax.annotation.Resource;
@@ -90,9 +91,20 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             message.setContent(messageInsertDTO.getContent());
         }
 
-        message.setToUserId(messageInsertDTO.getToUserId());
+        Long toUserId = messageInsertDTO.getToUserId();
+        message.setToUserId(toUserId);
 
+        /* 保存message到MySQL */
         messageMapper.insert(message);
+
+        /* 更新双方用户的私信列表 */
+        //TODO 这两行代码不应该被注释掉
+//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        Long myId = user.getId();
+        Long myId = 1L; // 这行代码应该被注释掉
+        double zsScore = RedisUtils.getZSetScoreBy2EpochSecond();
+        redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + myId, toUserId, zsScore);
+        redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + toUserId, myId, zsScore);
     }
 
     @Override
@@ -108,8 +120,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     public MessageSelectVO getMessages(MessageSelectDTO messageSelectDTO) {
         //TODO 这两行代码不应该被注释掉
 //        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long toUserId = user.getId();
-        Long toUserId = 1L; // 这行代码应该被注释掉
+//        Long myId = user.getId();
+        Long myId = 1L; // 这行代码应该被注释掉
         List<Message> messages = new ArrayList<>();
         Long lastId = null;
 
@@ -118,15 +130,15 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         if (messageSelectDTO.getIsSystem()) {
             // 系统消息
             lastId = messageSelectDTO.getLastId();
-            messages = messageMapper.getSystemMessagesLtId(toUserId, lastId);
+            messages = messageMapper.getSystemMessagesLtId(myId, lastId);
             lastId = messages.get(messages.size() - 1).getId();
         } else {
             // 私信列表
-            Set<Object> objects = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_MESSAGE_KEY + toUserId, 0L, -1L);
+            Set<Object> objects = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_MESSAGE_KEY + myId, 0L, -1L);
             if (ObjectUtil.isNotEmpty(objects)) {
                 for (Object object : objects) {
                     Long fromUserId = (long) (Integer) object;
-                    Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, toUserId);
+                    Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myId);
                     firstMessage.setFromUser(userMapper.getSimpleUserById(fromUserId));
                     messages.add(firstMessage);
                 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import suzumiya.constant.RedisConst;
 import suzumiya.model.pojo.User;
+import suzumiya.util.WebUtils;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -17,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
 @Component(value = "statisticsFilter")
 @Slf4j
@@ -31,7 +33,24 @@ public class StatisticsFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain) throws ServletException, IOException {
         String today = LocalDate.now().format(formatter);
         String ip = request.getRemoteHost(); // 获取用户ip
+        String newIp = ip.replaceAll(":", "-");
 //        String uri = request.getRequestURI(); // 获取uri
+
+        String userFrequencyKey = RedisConst.USER_FREQUENCY_KEY + newIp;
+        String userBanKey = RedisConst.USER_BAN_KEY + newIp;
+
+        /* 判断用户是否被Ban */
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(userBanKey))) {
+            WebUtils.renderString(response, "访问太过频繁，请在30s后重试");
+        }
+
+        /* 统计用户访问频率 */
+        redisTemplate.expire(userFrequencyKey, 2L, TimeUnit.SECONDS);
+        Long count = redisTemplate.opsForValue().increment(userFrequencyKey);
+        if (count >= 10) {
+            redisTemplate.opsForValue().set(userBanKey, 1, 30L, TimeUnit.SECONDS);
+            WebUtils.renderString(response, "访问太过频繁，请在30s后重试");
+        }
 
         redisTemplate.opsForHyperLogLog().add("uv:" + today, ip); // uv
         redisTemplate.opsForHyperLogLog().add("pv:" + today, ip + "_" + System.currentTimeMillis()); // pv

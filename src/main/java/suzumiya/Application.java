@@ -2,7 +2,6 @@ package suzumiya;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
@@ -23,27 +22,35 @@ import java.util.List;
 @EnableAspectJAutoProxy(exposeProxy = true)
 public class Application {
 
-    @Autowired
-    private UserMapper userMapper;
+    private static UserMapper userMapper;
+
+    public static Cache<String, Object> userCache;
+
+    @Resource
+    public void setUserMapper(UserMapper userMapper) {
+        Application.userMapper = userMapper;
+    }
 
     @Resource(name = "userCache")
-    public Cache<String, Object> userCache;
+    public void setUserCache(Cache<String, Object> userCache) {
+        Application.userCache = userCache;
+    }
 
     @PostConstruct
     public void init() {
         // 解决Redis和ES的netty启动冲突问题
         // see Netty4Utils.setAvailableProcessors()
         System.setProperty("es.set.netty.runtime.available.processors", "false");
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
 
         /* 缓存预热 */
         List<User> simpleUsers = userMapper.getSimpleUsers();
         for (User simpleUser : simpleUsers) {
             userCache.put(CacheConst.CACHE_USER_KEY + simpleUser.getId(), simpleUser);
         }
-    }
-
-    public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
 
         /* 发布任务 */
         // 定时刷新post分数（一个小时一次）

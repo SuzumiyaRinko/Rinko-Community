@@ -38,8 +38,7 @@ public class QuartzUtils {
             // 启动调度器
             myScheduler.start();
             myScheduler.scheduleJob(jobDetail, trigger);
-        } catch (Exception e) {
-            log.error("创建定时任务失败: " + e);
+        } catch (Exception ignore) {
         }
     }
 

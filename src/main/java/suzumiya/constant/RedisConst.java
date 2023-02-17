@@ -3,6 +3,10 @@ package suzumiya.constant;
 public class RedisConst {
 
     /* User */
+    // 某个用户的访问API的频率
+    public static final String USER_FREQUENCY_KEY = "user:frequency:"; // user:frequency:
+    // 某个用户是否被ban掉（30s）
+    public static final String USER_BAN_KEY = "user:ban:"; // user:ban:
     // 密码错误的重试次数
     public static final String LOGIN_RETRY_USER_KEY = "login:retry:user:"; // login:retry:user:{ip}
     // 已经登录了的用户的用户信息

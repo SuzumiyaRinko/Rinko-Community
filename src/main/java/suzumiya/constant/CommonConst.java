@@ -10,14 +10,17 @@ public class CommonConst {
 
     /* 服务层 */
     /* User */
-    public static final String PREFIX_ACTIVATION_URL = "http://localhost:8081/user/activation/";
+    public static final String PREFIX_ACTIVATION_URL = "http://localhost:8080/user/activation/";
     public static final String USER_LOGIN_URL = "#";
     public static final String USER_REGISTER_URL = "#";
     public static final String MAIL_FROM = "Txz2018911711@163.com";
+    /* Comment */
+    public static final int COMMENT_TYPE_2POST = 1;
+    public static final int COMMENT_TYPE_2COMMENT = 2;
 
     /* 普通常量 */
     public static final String PREFIX_BASE64IMG = "data:image/jpeg;base64,";
-    public static final long COMMUNITY_EPOCH = LocalDateTime.parse("2023-02-11 00:00:00", formatter).toEpochSecond(ZoneOffset.of("+8"));
+    public static final long COMMUNITY_EPOCH_SECOND = LocalDateTime.parse("2023-02-11 00:00:00", formatter).toEpochSecond(ZoneOffset.of("+8"));
     public static final int STANDARD_PAGE_SIZE = 10;
 
     /* 正则表达式 */

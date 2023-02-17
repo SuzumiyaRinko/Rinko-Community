@@ -48,11 +48,10 @@ public class JwtFilter extends OncePerRequestFilter {
     private final List<String> anonymousURIs = new ArrayList<>();
     @PostConstruct
     private void init() {
-        log.info("JwtFilter.init()");
+        anonymousURIs.add("/verifyCode");
         anonymousURIs.add("/user/login");
         anonymousURIs.add("/user/register");
         anonymousURIs.add("/user/activation");
-        anonymousURIs.add("/test2");
     }
 
     private static final String TOKEN_KEY = "114514"; // Token密钥
