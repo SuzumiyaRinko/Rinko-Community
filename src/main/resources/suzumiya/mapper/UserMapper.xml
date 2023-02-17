@@ -7,7 +7,7 @@
     </sql>
 
     <sql id="SIMPLE_COLUMNS">
-        id, nickname, avatar
+        id, nickname, is_famous, avatar
     </sql>
 
     <!-- User getUserById(Long userId) -->
@@ -28,7 +28,7 @@
         ON ur.role_id = ra.role_id
         JOIN sys_authority a
         ON ra.authority_id = a.id
-        WHERE user_id = #{userId} AND is_delete = 0
+        WHERE user_id = #{userId}
     </select>
 
     <!-- User getSimpleUserById(@Param("userId") Long userId) -->

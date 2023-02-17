@@ -2,8 +2,10 @@ package suzumiya.model.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class PostSearchDTO {
+public class PostSearchDTO implements Serializable {
 
     private String searchKey; // 正常查询的时候，会用searchKey来查
     private Boolean isSuggestion; // 联想搜索

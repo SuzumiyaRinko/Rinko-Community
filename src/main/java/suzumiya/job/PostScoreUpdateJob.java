@@ -16,6 +16,7 @@ import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.PostMapper;
+import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.repository.PostRepository;
 
@@ -68,7 +69,7 @@ public class PostScoreUpdateJob extends QuartzJobBean {
 
                 // 计算分数并更新MySQL和ES
                 double newScore = Math.log(Math.max(1, (Boolean.TRUE.equals(wonderful) ? 75 : 0) + likeCount * 2 + commentCount * 10 + collectionCount * 2))
-                        + (post.getCreateTime().toEpochSecond(ZoneOffset.of("+8")) - CommonConst.COMMUNITY_EPOCH) * 1.0 / (60 * 60 * 24L);
+                        + (post.getCreateTime().toEpochSecond(ZoneOffset.of("+8")) - CommonConst.COMMUNITY_EPOCH_SECOND) * 1.0 / (60 * 60 * 24L);
                 post.setScore(newScore);
                 // MySQL
                 postMapper.updateById(post);
@@ -85,7 +86,10 @@ public class PostScoreUpdateJob extends QuartzJobBean {
             }
 
             /* 清除post缓存（异步） */
-            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
+            CacheClearDTO cacheClearDTO = new CacheClearDTO();
+            cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+            cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
         }
 
         log.debug("为post列表刷新score完成");

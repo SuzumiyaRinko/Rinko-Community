@@ -13,6 +13,7 @@ import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
 
 import java.util.List;
+import java.util.Set;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -60,7 +61,7 @@ public class TestPost {
 
     @Test
     void testSuggest() throws NoSuchFieldException, IllegalAccessException {
-        List<String> suggestions = postService.suggest("坤坤");
+        Set<String> suggestions = postService.suggest("坤坤");
         System.out.println(suggestions);
     }
 

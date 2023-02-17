@@ -2,8 +2,10 @@ package suzumiya.model.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class CommentSelectDTO {
+public class CommentSelectDTO implements Serializable {
 
     private Integer targetType = 1; // post的评论 或 comment的评论
     private Long targetId; // postId或commentId

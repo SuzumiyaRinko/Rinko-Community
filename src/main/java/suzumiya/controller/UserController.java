@@ -44,7 +44,7 @@ public class UserController {
         return ResponseGenerator.returnOK("用户注册成功", null);
     }
 
-    @GetMapping("/activation/{uuid}")
+    @PostMapping("/activation/{uuid}")
     public void activate(HttpServletResponse response, @PathVariable("uuid") String uuid) throws IOException {
         /* 激活用户（激活页面在Service层返回） */
         userService.activate(uuid, response);

@@ -61,7 +61,7 @@ public class TestRedis {
 
                 // 计算分数并更新MySQL和ES
                 double newScore = Math.log(Math.max(1, (Boolean.TRUE.equals(wonderful) ? 75 : 0) + likeCount * 2 + commentCount * 10 + collectionCount * 2))
-                        + (post.getCreateTime().toEpochSecond(ZoneOffset.of("+8")) - CommonConst.COMMUNITY_EPOCH);
+                        + (post.getCreateTime().toEpochSecond(ZoneOffset.of("+8")) - CommonConst.COMMUNITY_EPOCH_SECOND);
                 post.setScore(newScore);
                 // MySQL
                 postMapper.updateById(post);

@@ -6,11 +6,12 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @TableName("tb_tag")
 @Data
-public class Tag {
+public class Tag implements Serializable {
 
     // 主键
     @TableId(type = IdType.AUTO)

@@ -8,6 +8,7 @@ import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
 
 import java.util.List;
+import java.util.Set;
 
 public interface IPostService extends IService<Post> {
 
@@ -24,7 +25,7 @@ public interface IPostService extends IService<Post> {
     PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException;
 
     /* 搜索联想 */
-    List<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException;
+    Set<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException;
 
     /* 加精 */
     void setWonderful(List<Long> postIds);

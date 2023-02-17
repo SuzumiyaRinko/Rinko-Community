@@ -2,11 +2,12 @@ package suzumiya.model.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 // 用ES查询就要返回这个Page对象（MySQL查询用PageHelper）
 @Data
-public class Page<T> {
+public class Page<T> implements Serializable {
 
     private Integer pageNum; // 当前页
     private Integer pageSize; // 一页有多少条数据

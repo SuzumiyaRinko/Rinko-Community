@@ -4,7 +4,7 @@ package suzumiya.model.dto;//package suzumiya.model.dto;
 //import suzumiya.model.pojo.User;
 //
 //@Component
-//public class UserHolder {
+//public class UserHolder implements Serializable {
 //
 //    // 当前登录的用户
 //    public ThreadLocal<User> loginUser = new ThreadLocal<>();

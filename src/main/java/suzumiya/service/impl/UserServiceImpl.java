@@ -87,7 +87,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 判断注册的账号密码是否符合要求 */
         String username = user.getUsername();
         String password = user.getPassword();
-        if (username != null && username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD)) {
+        if (username != null && !(username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD))) {
             throw new RuntimeException("账号或密码不符合要求");
         }
 
@@ -166,7 +166,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 判断注册的账号密码是否符合要求 */
         String username = userRegisterDTO.getUsername();
         String password = userRegisterDTO.getPassword();
-        if (username != null && username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD)) {
+        if (username != null && !(username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD))) {
             throw new RuntimeException("账号或密码不符合要求");
         }
 

@@ -1,10 +1,5 @@
 package suzumiya;
 
-import suzumiya.constant.CommonConst;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 public class TestRegex {
 
     public static void main(String[] args) {
@@ -22,9 +17,13 @@ public class TestRegex {
 //        System.out.println(str2.matches(CommonConst.REGEX_EMAIL));
 //        System.out.println(str3.matches(CommonConst.REGEX_EMAIL));
 //        System.out.println(str4.matches(CommonConst.REGEX_EMAIL));
-        final String s1 = "11x1";
-        String s2 = s1.replaceAll("x", "666");
-        System.out.println("s1 = " + s1);
-        System.out.println("s2 = " + s2);
+
+//        final String s1 = "11x1";
+//        String s2 = s1.replaceAll("x", "666");
+//        System.out.println("s1 = " + s1);
+//        System.out.println("s2 = " + s2);
+
+
+        boolean matches = "pwd12345678".matches("[0-9a-zA-Z]{8,16}");
     }
 }

@@ -7,7 +7,7 @@
 //
 //@TableName("sys_authority")
 //@Data
-//public class Authority {
+//public class Authority implements Serializable {
 //
 //    @TableId(type = IdType.AUTO)
 //    private Long id;

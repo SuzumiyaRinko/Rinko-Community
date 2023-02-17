@@ -69,38 +69,6 @@ public class MQConsumer {
         log.debug("正在注册 username={} ", newUser.getUsername());
     }
 
-    /* 监听Post新增接口 */
-//    @RabbitListener(bindings = @QueueBinding(
-//            value = @Queue(name = MQConstant.POST_INSERT_QUEUE),
-//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-//            key = {MQConstant.POST_INSERT_KEY}
-//    ))
-//    public void listenPostInsertQueue(Post post) {
-//        log.debug("正在新增帖子 title={} ", post.getTitle());
-//    }
-
-    /* 监听Post删除接口 */
-//    @RabbitListener(bindings = @QueueBinding(
-//            value = @Queue(name = MQConstant.POST_DELETE_QUEUE),
-//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-//            key = {MQConstant.POST_DELETE_KEY}
-//    ))
-//    public void listenPostDeleteQueue(Long postId) {
-//
-//        log.debug("正在逻辑删除帖子 postId={} ", postId);
-//    }
-
-    /* 监听Post更新接口 */
-//    @RabbitListener(bindings = @QueueBinding(
-//            value = @Queue(name = MQConstant.POST_UPDATE_QUEUE),
-//            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-//            key = {MQConstant.POST_UPDATE_KEY}
-//    ))
-//    public void listenPostUpdateQueue(Post post) {
-//
-//        log.debug("正在更新帖子 postId={} ", post.getId());
-//    }
-
     /* 监听Cache更新接口 */
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(name = MQConstant.CACHE_UPDATE_QUEUE),

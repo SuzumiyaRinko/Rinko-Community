@@ -36,7 +36,7 @@ public class CacheServiceImpl implements ICacheService {
         Object value = cacheUpdateDTO.getValue();
         int cacheType = cacheUpdateDTO.getCacheType();
         int caffeineType = cacheUpdateDTO.getCaffeineType();
-        Duration redisTTL = cacheUpdateDTO.getRedisTTL();
+        Duration duration = cacheUpdateDTO.getDuration();
 
         // Caffeine
         if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
@@ -47,12 +47,12 @@ public class CacheServiceImpl implements ICacheService {
 
         // Redis
         if (cacheType == CacheConst.VALUE_TYPE_SIMPLE) {
-            redisTemplate.opsForValue().set(key, value, redisTTL);
+            redisTemplate.opsForValue().set(key, value, duration);
         } else {
             Map<String, Object> valueMap = new HashMap<>();
             BeanUtil.beanToMap(value, valueMap, true, null);
             redisTemplate.opsForHash().putAll(key, valueMap);
-            redisTemplate.expire(key, redisTTL);
+            redisTemplate.expire(key, duration);
         }
     }
 
@@ -72,6 +72,7 @@ public class CacheServiceImpl implements ICacheService {
             Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
             while (cursor.hasNext()) {
                 String cacheKey = cursor.next();
+
                 postCache.invalidate(cacheKey);
                 redisTemplate.delete(cacheKey);
             }

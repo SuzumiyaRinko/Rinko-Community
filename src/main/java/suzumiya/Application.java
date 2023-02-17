@@ -12,7 +12,6 @@ import suzumiya.mapper.UserMapper;
 import suzumiya.model.pojo.User;
 import suzumiya.util.QuartzUtils;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.util.List;
 
@@ -36,15 +35,12 @@ public class Application {
         Application.userCache = userCache;
     }
 
-    @PostConstruct
-    public void init() {
-        // 解决Redis和ES的netty启动冲突问题
-        // see Netty4Utils.setAvailableProcessors()
-        System.setProperty("es.set.netty.runtime.available.processors", "false");
-    }
-
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
+
+        /* 解决Redis和ES的netty启动冲突问题 */
+        // see Netty4Utils.setAvailableProcessors()
+        System.setProperty("es.set.netty.runtime.available.processors", "false");
 
         /* 缓存预热 */
         List<User> simpleUsers = userMapper.getSimpleUsers();

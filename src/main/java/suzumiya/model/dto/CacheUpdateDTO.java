@@ -8,9 +8,9 @@ import java.time.Duration;
 @Data
 public class CacheUpdateDTO implements Serializable {
 
-    private int cacheType;
+    private Integer cacheType;
     private String key;
     private Object value;
-    private int caffeineType;
-    private Duration redisTTL;
+    private Integer caffeineType;
+    private Duration duration;
 }

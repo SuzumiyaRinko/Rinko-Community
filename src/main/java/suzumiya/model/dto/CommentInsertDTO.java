@@ -2,8 +2,10 @@ package suzumiya.model.dto;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class CommentInsertDTO {
+public class CommentInsertDTO implements Serializable {
 
     // 评论类型 1:评论post 2:评论别人的comment
     private Integer type;

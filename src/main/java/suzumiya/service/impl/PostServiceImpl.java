@@ -105,7 +105,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
         /* 新增post到MySQL */
         // 把tagIDs转换为tags
-        List<Integer> tagIDs = post.getTagIDs();
+        List<Integer> tagIDs = postInsertDTO.getTagIDs();
+        post.setTagIDs(tagIDs);
         int tags = 0;
         if (ObjectUtil.isNotEmpty(tagIDs)) {
             for (Integer tagID : tagIDs) {
@@ -131,7 +132,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, post.getId());
 
         /* 清除post缓存（异步） */
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, CacheConst.CACHE_POST_KEY_PATTERN);
+        CacheClearDTO cacheClearDTO = new CacheClearDTO();
+        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
         /* 发送系统消息（异步） */
         Set<Object> members = redisTemplate.opsForSet().members(RedisConst.USER_FOLLOWER_KEY + myId);
         if (ObjectUtil.isNotEmpty(members)) {
@@ -152,7 +156,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public void delete(Long postId) {
         /* 在MySQL把post逻辑删除 */
-        postMapper.deleteById(postId);
+        int result = postMapper.deleteById(postId);
+        if (result == 0) {
+            throw new RuntimeException("该贴子不存在");
+        }
 
         /* 在ES把post删除 */
         postRepository.deleteById(postId);
@@ -233,10 +240,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         boolean flag = false;
 
         /* 判断isCache和cacheKey */
-        if (StrUtil.isNotBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
+        if (StrUtil.isBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
             isCache = true;
             cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum;
-        } else if (StrUtil.isNotBlank(searchKey) && userId <= 0) {
+        } else if (StrUtil.isBlank(searchKey) && userId <= 0) {
             isCache = true;
             cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
         }
@@ -246,7 +253,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             // Caffeine
             Object t = postCache.getIfPresent(cacheKey);
             if (t != null) {
-                postSearchVO = (PostSearchVO) t;
+                BeanUtil.fillBeanWithMap((LinkedHashMap) t, postSearchVO, null);
                 flag = true;
             }
 
@@ -291,7 +298,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             cacheUpdateDTO.setKey(cacheKey);
             cacheUpdateDTO.setValue(postSearchVO);
             cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-            cacheUpdateDTO.setRedisTTL(Duration.ofMinutes(30L));
+            cacheUpdateDTO.setDuration(Duration.ofMinutes(30L));
             rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         }
 
@@ -299,7 +306,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     @Override
-    public List<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
+    public Set<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
         PostSearchDTO postSearchDTO = new PostSearchDTO();
         postSearchDTO.setSearchKey(searchKey);
         postSearchDTO.setIsSuggestion(true);
@@ -395,7 +402,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             List<String> parseList = IKAnalyzerUtils.parse(postSearchDTO.getSearchKey());
             PostSearchVO postSearchVO = new PostSearchVO();
             List<SearchHit<Post>> hits = searchHits.getSearchHits();
-            List<String> suggestions = new ArrayList<>();
+            Set<String> suggestions = new HashSet<>();
             for (SearchHit<Post> hit : hits) {
                 // 1 解析 _source
                 Post post = hit.getContent();

@@ -4,11 +4,12 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @TableName("tb_message")
 @Data
-public class Message {
+public class Message implements Serializable {
 
     // 主键
     @TableId(type = IdType.AUTO)

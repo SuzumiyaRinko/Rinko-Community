@@ -15,7 +15,7 @@ package suzumiya.model.pojo;//package suzumiya.model.pojo;
 //@Document(indexName = "hotel")
 //@Data
 //@NoArgsConstructor
-//public class HotelDoc {
+//public class HotelDoc implements Serializable {
 //
 //    @Id
 //    private Long id;

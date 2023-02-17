@@ -4,12 +4,13 @@ import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @TableName("tb_comment")
 @Data
-public class Comment {
+public class Comment implements Serializable {
 
     // 主键
     @TableId(type = IdType.AUTO)

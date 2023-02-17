@@ -11,7 +11,7 @@ import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
 import suzumiya.util.ResponseGenerator;
 
-import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/post")
@@ -45,19 +45,19 @@ public class PostController {
     }
 
     @GetMapping("/search/suggestions")
-    public BaseResponse<List<String>> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
-        List<String> suggestions = postService.suggest(searchKey);
+    public BaseResponse<Set<String>> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
+        Set<String> suggestions = postService.suggest(searchKey);
         return ResponseGenerator.returnOK("", suggestions);
     }
 
-    @PostMapping("/like")
-    public BaseResponse<Object> like(@RequestBody Long postId) {
+    @PostMapping("/like/{postId}")
+    public BaseResponse<Object> like(@PathVariable("postId") Long postId) {
         postService.like(postId);
         return ResponseGenerator.returnOK("点赞post成功", null);
     }
 
-    @PostMapping("/collect")
-    public BaseResponse<Object> collect(@RequestBody Long postId) {
+    @PostMapping("/collect/{postId}")
+    public BaseResponse<Object> collect(@PathVariable("postId") Long postId) {
         postService.collect(postId);
         return ResponseGenerator.returnOK("收藏post成功", null);
     }

@@ -7,9 +7,12 @@ import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import suzumiya.model.pojo.TestConvert;
+import suzumiya.constant.CacheConst;
+import suzumiya.model.dto.CacheUpdateDTO;
+import suzumiya.model.vo.PostSearchVO;
 
 import javax.annotation.Resource;
+import java.time.Duration;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -23,7 +26,12 @@ public class TestJackson {
 
     @Test
     void testJackson() throws JsonProcessingException {
-        TestConvert testConvert = new TestConvert();
-        System.out.println(objectMapper.writeValueAsString(testConvert));
+        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+        cacheUpdateDTO.setKey("cacheKey");
+        cacheUpdateDTO.setValue(new PostSearchVO());
+        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        cacheUpdateDTO.setDuration(Duration.ofMinutes(30L));
+        System.out.println(objectMapper.writeValueAsString(cacheUpdateDTO));
     }
 }

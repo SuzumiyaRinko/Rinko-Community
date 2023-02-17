@@ -18,7 +18,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.TimeUnit;
 
 @Component(value = "statisticsFilter")
 @Slf4j
@@ -42,15 +41,18 @@ public class StatisticsFilter extends OncePerRequestFilter {
         /* 判断用户是否被Ban */
         if (Boolean.TRUE.equals(redisTemplate.hasKey(userBanKey))) {
             WebUtils.renderString(response, "访问太过频繁，请在30s后重试");
+            return;
         }
 
         /* 统计用户访问频率 */
-        redisTemplate.expire(userFrequencyKey, 2L, TimeUnit.SECONDS);
-        Long count = redisTemplate.opsForValue().increment(userFrequencyKey);
-        if (count >= 10) {
-            redisTemplate.opsForValue().set(userBanKey, 1, 30L, TimeUnit.SECONDS);
-            WebUtils.renderString(response, "访问太过频繁，请在30s后重试");
-        }
+        //TODO 不该被注释
+//        Long count = redisTemplate.opsForValue().increment(userFrequencyKey);
+//        redisTemplate.expire(userFrequencyKey, 2L, TimeUnit.SECONDS);
+//        if (count >= 10) {
+//            redisTemplate.opsForValue().set(userBanKey, 1, 30L, TimeUnit.SECONDS);
+//            WebUtils.renderString(response, "访问太过频繁，请在30s后重试");
+//            return;
+//        }
 
         redisTemplate.opsForHyperLogLog().add("uv:" + today, ip); // uv
         redisTemplate.opsForHyperLogLog().add("pv:" + today, ip + "_" + System.currentTimeMillis()); // pv

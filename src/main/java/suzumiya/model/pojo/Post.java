@@ -65,7 +65,7 @@ public class Post implements Serializable {
     private List<String> tagsStr;
 
     // 用于搜索的字段
-    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", ignoreFields = "all", excludeFromSource = true)
+    @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", ignoreFields = "searchField", excludeFromSource = true)
     @JsonIgnore
     @TableField(exist = false)
     private String searchField;

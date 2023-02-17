@@ -1,6 +1,8 @@
 server:
   port: 8080
 spring:
+  jackson:
+    default-property-inclusion: non_null # 默认忽略null值（使用@EnableWebMvc会失效）
   datasource:
     url: jdbc:mysql://suzumiya-mysql:3306/db_Rinko-Community?serverTimezone=UTC&useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true
     username: root

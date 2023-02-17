@@ -48,10 +48,11 @@ public class JwtFilter extends OncePerRequestFilter {
     private final List<String> anonymousURIs = new ArrayList<>();
     @PostConstruct
     private void init() {
-        anonymousURIs.add("/verifyCode");
-        anonymousURIs.add("/user/login");
-        anonymousURIs.add("/user/register");
-        anonymousURIs.add("/user/activation");
+        String servletContext = "/Rinko-Community";
+        anonymousURIs.add(servletContext + "/verifyCode");
+        anonymousURIs.add(servletContext + "/user/login");
+        anonymousURIs.add(servletContext + "/user/register");
+        anonymousURIs.add(servletContext + "/user/activation");
     }
 
     private static final String TOKEN_KEY = "114514"; // Token密钥
@@ -87,7 +88,7 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
         JWT jwt = JWTUtil.parseToken(token);
-        Long userId = (Long) jwt.getPayload("userId");
+        long userId = (long) (Integer) jwt.getPayload("userId");
         // 从Redis中获取用户信息
         User user = new User();
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(RedisConst.LOGIN_USER_KEY + userId);

@@ -1,6 +1,8 @@
 spring:
   profiles:
     active: dev
+  main:
+    allow-circular-references: true
 server:
   servlet:
     context-path: /Rinko-Community

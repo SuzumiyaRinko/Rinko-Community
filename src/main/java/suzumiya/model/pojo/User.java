@@ -7,6 +7,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.stream.Collectors;
 
 @TableName("sys_user")
 @Data
-public class User implements UserDetails {
+public class User implements UserDetails, Serializable {
     // 自增id
     @TableId(type = IdType.AUTO)
     private Long id;
