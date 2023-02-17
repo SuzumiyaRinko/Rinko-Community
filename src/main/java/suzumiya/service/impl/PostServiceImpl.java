@@ -24,6 +24,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
@@ -115,10 +116,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         // 新增post到MySQL
 
         //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        post.setUserId(user.getId());
-        Long myId = 2L; // 这行代码应该被注释掉
-        post.setUserId(myId); // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 2L; // 这行代码应该被注释掉
+        post.setUserId(myId);
 
         post.setCreateTime(LocalDateTime.now());
         postMapper.insert(post);
@@ -486,9 +487,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public void like(Long postId) {
         //TODO 这2行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long userId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
 
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_LIKE_LIST_KEY + postId, myId))) {
             /* 减少某个post的点赞数 */
@@ -516,9 +517,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public void collect(Long postId) {
         //TODO 这2行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long userId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
 
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_COLLECTIONS_KEY + myId, postId))) {
             /* 减少某个post的收藏数 */

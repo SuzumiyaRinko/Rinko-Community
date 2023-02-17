@@ -254,9 +254,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public int follow(Long targetId) {
         //TODO 这2行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long myId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
 
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myId, targetId))) {
             /* 取消关注target */
@@ -274,9 +274,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public FollowingSelectVO getFollowings(Long lastId) {
         //TODO 这2行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long myId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
 
         /* 获取本次查询的followingIds */
         List<User> followings = new ArrayList<>();

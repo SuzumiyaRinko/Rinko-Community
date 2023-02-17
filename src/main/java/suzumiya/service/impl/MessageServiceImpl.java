@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.CommentMapper;
@@ -99,9 +100,9 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
         /* 更新双方用户的私信列表 */
         //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long myId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
         double zsScore = RedisUtils.getZSetScoreBy2EpochSecond();
         redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + myId, toUserId, zsScore);
         redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + toUserId, myId, zsScore);
@@ -119,9 +120,9 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     @Override
     public MessageSelectVO getMessages(MessageSelectDTO messageSelectDTO) {
         //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long myId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
         List<Message> messages = new ArrayList<>();
         Long lastId = null;
 
@@ -154,9 +155,9 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     @Override
     public MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO) {
         //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long toUserId = user.getId();
-        Long myId = 1L; // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+//        Long myId = 1L; // 这行代码应该被注释掉
 
         Long targetId = messageSelectDTO.getTargetId();
         Long lastId = messageSelectDTO.getLastId();

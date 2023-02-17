@@ -8,6 +8,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
@@ -70,9 +71,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         /* 新增comment到MySQL */
 
         //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        comment.setUserId(user.getId());
-        comment.setUserId(1L); // 这行代码应该被注释掉
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        comment.setUserId(user.getId());
+//        comment.setUserId(1L); // 这行代码应该被注释掉
 
         Integer targetType = commentInsertDTO.getType();
         Long targetId = commentInsertDTO.getTargetId();
