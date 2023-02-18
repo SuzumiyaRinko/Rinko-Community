@@ -146,7 +146,7 @@ public class TestMySQL {
         MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
         messageInsertDTO.setContent("juejue");
         messageInsertDTO.setIsSystem(true);
-        messageService.sendMessage(messageInsertDTO);
+        messageService.saveMessage(messageInsertDTO);
     }
 
     @Test

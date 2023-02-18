@@ -54,7 +54,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     private MessageMapper messageMapper;
 
     @Override
-    public void sendMessage(MessageInsertDTO messageInsertDTO) {
+    public void saveMessage(MessageInsertDTO messageInsertDTO) {
         /* 判断内容长度 */
         if (!messageInsertDTO.getIsSystem() && messageInsertDTO.getContent().length() > 2000) {
             throw new RuntimeException("内容长度超出限制");
@@ -90,9 +90,6 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             message.setFromUserId(messageInsertDTO.getFromUserId());
             message.setContent(messageInsertDTO.getContent());
             /* 更新双方用户的私信列表 */
-            //TODO 这行代码应该被注释
-//        Long myId = 1L;
-            //TODO 这行代码不应该被注释
             Long myId = messageInsertDTO.getMyId();
 
             double zsScore = RedisUtils.getZSetScoreBy2EpochSecond();

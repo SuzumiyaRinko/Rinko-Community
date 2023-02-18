@@ -37,7 +37,7 @@ public class Message implements Serializable {
 //    @TableLogic
 //    private Boolean isDelete;
 
-    // 评论的用户的部分信息（id, nickname, avatar）
+    // 评论的用户的部分信息（id, nickname, is_famous, avatar）
     @TableField(exist = false)
     public User fromUser;
 }

@@ -25,7 +25,7 @@ public class MessageController {
         messageInsertDTO.setMyId(user.getId());
         messageInsertDTO.setFromUserId(user.getId());
 
-        messageService.sendMessage(messageInsertDTO);
+        messageService.saveMessage(messageInsertDTO);
         return ResponseGenerator.returnOK("消息发送成功", null);
     }
 

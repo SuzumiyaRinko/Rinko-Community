@@ -103,7 +103,7 @@ public class MQConsumer {
     ))
     public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) {
         /* 发送消息 */
-        messageService.sendMessage(messageInsertDTO);
+        messageService.saveMessage(messageInsertDTO);
     }
 
     // DelayQueue：监听用户激活时间是否结束

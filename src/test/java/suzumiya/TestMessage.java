@@ -27,7 +27,7 @@ public class TestMessage {
         messageInsertDTO.setFromUserId(114514L);
         messageInsertDTO.setToUserId(1L);
         messageInsertDTO.setContent("这是消息正文");
-        messageService.sendMessage(messageInsertDTO);
+        messageService.saveMessage(messageInsertDTO);
     }
 
     @Test

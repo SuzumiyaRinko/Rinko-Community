@@ -35,6 +35,9 @@ spring:
 logging:
   level:
     suzumiya.aspect.ControllerAspect: debug
+    suzumiya.controller.WSChatController: debug
+    suzumiya.mq.MQConsumer: debug
+    suzumiya.job: debug
 #  pattern:
 #    dateformat: HH:mm:ss:SSS
 mybatis-plus:

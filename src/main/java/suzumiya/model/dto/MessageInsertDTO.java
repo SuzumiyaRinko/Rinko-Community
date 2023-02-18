@@ -22,10 +22,18 @@ public class MessageInsertDTO implements Serializable {
     private Long eventUserId;
     // postId（可以为null）
     private Long postId;
-    // 系统消息类型
+
+    // ws系统消息
+//    private Object systemMsgContent;
+
+    /* 系统消息类型 */
     private int SystemMsgType;
+    // post相关
     public static final int SYSTEM_TYPE_LIKE = 1;
     public static final int SYSTEM_TYPE_COMMENT = 2;
     public static final int SYSTEM_TYPE_COLLECT = 3;
     public static final int SYSTEM_TYPE_FOLLOWING_POST = 4;
+    // wsChat相关
+//    public static final int SYSTEM_TYPE_FOLLOWING_POST = 4;
+
 }

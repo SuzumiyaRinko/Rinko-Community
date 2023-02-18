@@ -135,7 +135,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 生成并返回Jwt */
         HashMap<String, Object> payload = new HashMap<>();
         payload.put("userId", authenticatedUser.getId());
-        return "Bearer " + JWTUtil.createToken(payload, TOKEN_KEY.getBytes(StandardCharsets.UTF_8));
+//        return "Bearer " + JWTUtil.createToken(payload, TOKEN_KEY.getBytes(StandardCharsets.UTF_8));
+        return JWTUtil.createToken(payload, TOKEN_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override

@@ -46,43 +46,46 @@ public class JwtFilter extends OncePerRequestFilter {
     private ObjectMapper objectMapper;
 
     private final List<String> anonymousURIs = new ArrayList<>();
+
     @PostConstruct
     private void init() {
-        String servletContext = "/Rinko-Community";
-        anonymousURIs.add(servletContext + "/verifyCode");
-        anonymousURIs.add(servletContext + "/user/login");
-        anonymousURIs.add(servletContext + "/user/register");
-        anonymousURIs.add(servletContext + "/user/activation");
+        anonymousURIs.add(SERVLET_CONTEXT + "/verifyCode");
+        anonymousURIs.add(SERVLET_CONTEXT + "/user/login");
+        anonymousURIs.add(SERVLET_CONTEXT + "/user/register");
+        anonymousURIs.add(SERVLET_CONTEXT + "/user/activation");
     }
 
     private static final String TOKEN_KEY = "114514"; // Token密钥
+    private static final String SERVLET_CONTEXT = "/Rinko-Community";
+    private static final String WSCHAT_URI_PREFIX = SERVLET_CONTEXT + "/wsChat"; // wsChat的Uri
 
     @Override
     protected void doFilterInternal(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain) throws ServletException, IOException {
         String uri = request.getRequestURI();
-        if(uri.equals("/favicon.ico")) {
+        if (uri.equals("/favicon.ico")) {
             return; // 在返回激活页面后 html会来后端请求/favicon.ico
         }
 
         /* 可匿名访问，直接放行 */
         for (String anonymousURI : anonymousURIs) {
-            if(uri.equals(anonymousURI) || uri.startsWith(anonymousURI)) {
+            if (uri.equals(anonymousURI) || uri.startsWith(anonymousURI)) {
                 filterChain.doFilter(request, response);
                 return;
             }
         }
 
         /* 验签 */
-        String token = request.getHeader("Authorization").substring("Bearer ".length());
+//        String token = request.getHeader("Authorization").substring("Bearer ".length());
+        String token = request.getHeader("Authorization");
         // 判空
-        if(StrUtil.isBlank(token)) {
+        if (StrUtil.isBlank(token)) {
             BaseResponse<Object> baseResponse = ResponseGenerator.returnError(HttpStatus.HTTP_UNAUTHORIZED, "身份认证未通过");
             WebUtils.renderString(response, objectMapper.writeValueAsString(baseResponse));
             return;
         }
         // 验签
         boolean verify = JWTUtil.verify(token, TOKEN_KEY.getBytes(StandardCharsets.UTF_8));
-        if(!verify) {
+        if (!verify) {
             BaseResponse<Object> baseResponse = ResponseGenerator.returnError(HttpStatus.HTTP_UNAUTHORIZED, "身份认证未通过");
             WebUtils.renderString(response, objectMapper.writeValueAsString(baseResponse));
             return;
@@ -92,7 +95,7 @@ public class JwtFilter extends OncePerRequestFilter {
         // 从Redis中获取用户信息
         User user = new User();
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(RedisConst.LOGIN_USER_KEY + userId);
-        if(ObjectUtil.isEmpty(entries)) {
+        if (ObjectUtil.isEmpty(entries)) {
             BaseResponse<Object> baseResponse = ResponseGenerator.returnError(HttpStatus.HTTP_UNAUTHORIZED, "用户信息已过期");
             WebUtils.renderString(response, objectMapper.writeValueAsString(baseResponse));
             return;
@@ -104,7 +107,23 @@ public class JwtFilter extends OncePerRequestFilter {
         // 刷新用户信息TTL
         redisTemplate.expire(RedisConst.LOGIN_USER_KEY + userId, 30L, TimeUnit.MINUTES);
 
+        /* 如果是ws请求，检验路径muUserId是否和Token中的userId相同 */
+        if (uri.startsWith(WSCHAT_URI_PREFIX)) {
+            String[] split = uri.split("/");
+            String wsUserId = split[split.length - 1];
+            if (!StrUtil.equals(String.valueOf(userId), wsUserId)) {
+                BaseResponse<Object> baseResponse = ResponseGenerator.returnError(HttpStatus.HTTP_UNAUTHORIZED, "ws身份验证错误");
+                WebUtils.renderString(response, objectMapper.writeValueAsString(baseResponse));
+                return;
+            }
+        }
+
         /* 放行 */
         filterChain.doFilter(request, response);
+
+        /* 如果是ws请求，返回时要把token放到Sec-WebSocket-Protocol中 */
+        if (uri.startsWith(WSCHAT_URI_PREFIX)) {
+            response.setHeader("Sec-WebSocket-Protocol", token);
+        }
     }
 }

@@ -9,7 +9,7 @@ import suzumiya.model.vo.MessageSelectVO;
 public interface IMessageService extends IService<Message> {
 
     /* 发信息 */
-    void sendMessage(MessageInsertDTO messageInsertDTO);
+    void saveMessage(MessageInsertDTO messageInsertDTO);
 
     /* 查询未读消息条数 */
     long notReadCount(Boolean isSystem, Long myId);
