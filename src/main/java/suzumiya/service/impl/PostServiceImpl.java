@@ -542,6 +542,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             Long toUserId = postMapper.getUserIdByPostId(postId);
 
             MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+            messageInsertDTO.setMyId(myId);
             messageInsertDTO.setToUserId(toUserId);
             messageInsertDTO.setEventUserId(myId);
             messageInsertDTO.setIsSystem(true);

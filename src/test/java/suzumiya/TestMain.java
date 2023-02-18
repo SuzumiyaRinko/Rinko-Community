@@ -1,10 +1,14 @@
 package suzumiya;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class TestMain {
 
-    public static void main(String[] args) throws IOException {
-        System.out.println("Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.tMuYIXHo9bHthVv4is-wwopuxuQExQ1NXk7YbpaSOaM".substring("Bearer ".length()));
+    public static void main(String[] args) {
+        ArrayList<Integer> nums = new ArrayList<>(List.of(1, 2, 3));
+        Collections.reverse(nums);
+        System.out.println(nums);
     }
 }

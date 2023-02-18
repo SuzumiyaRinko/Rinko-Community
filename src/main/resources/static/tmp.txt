@@ -7,7 +7,7 @@
 //        // Caffeine
 //        Object t = userCache.getIfPresent(cacheKey);
 //        if (t != null) {
-//            user = (User) t;
+//              BeanUtil.fillBeanWithMap((LinkedHashMap) t, user, null);
 //            flag = true;
 //        }
 //

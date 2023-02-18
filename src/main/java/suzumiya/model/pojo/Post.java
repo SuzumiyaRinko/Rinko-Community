@@ -34,7 +34,7 @@ public class Post implements Serializable {
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
     // 是否加精 0:否 1:是
-    @Field(type = FieldType.Boolean)
+    @Field(type = FieldType.Boolean, index = false)
     private Boolean isWonderful;
     // 是否置顶 0:否 1:是
     @Field(type = FieldType.Boolean)

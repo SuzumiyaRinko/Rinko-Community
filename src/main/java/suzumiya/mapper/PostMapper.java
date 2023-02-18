@@ -23,6 +23,9 @@ public interface PostMapper extends BaseMapper<Post> {
     @Select("SELECT id FROM tb_post WHERE user_id = #{userId} LIMIT #{startIndex}, #{size}")
     List<Long> getPostIdsByUserId(@Param("postId") Long postId, @Param("startIndex") int startIndex, @Param("size") int size);
 
+    @Select("SELECT id,is_wonderful FROM tb_post ORDER BY score DESC LIMIT 0,10")
+    List<Post> getTop10PostWithIdAndIsWonderful();
+
     @Delete("DELETE FROM tb_post WHERE is_delete = 1")
     void tableLogicDataClear();
 }

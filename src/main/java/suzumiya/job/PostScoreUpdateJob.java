@@ -71,9 +71,9 @@ public class PostScoreUpdateJob extends QuartzJobBean {
                 double newScore = Math.log(Math.max(1, (Boolean.TRUE.equals(wonderful) ? 75 : 0) + likeCount * 2 + commentCount * 10 + collectionCount * 2))
                         + (post.getCreateTime().toEpochSecond(ZoneOffset.of("+8")) - CommonConst.COMMUNITY_EPOCH_SECOND) * 1.0 / (60 * 60 * 24L);
                 post.setScore(newScore);
-                // MySQL
+                // 存储到MySQL
                 postMapper.updateById(post);
-                // ES
+                // 存储到ES
                 Optional<Post> optional = postRepository.findById(postId);
                 if (optional.isEmpty()) {
                     throw new RuntimeException("该post不存在");

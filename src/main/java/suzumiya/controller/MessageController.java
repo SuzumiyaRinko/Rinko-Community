@@ -18,10 +18,11 @@ public class MessageController {
     @Autowired
     private IMessageService messageService;
 
-    @PostMapping()
+    @PostMapping
     public BaseResponse<Object> sendMessage(@RequestBody MessageInsertDTO messageInsertDTO) {
         // 获取当前用户id
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        messageInsertDTO.setMyId(user.getId());
         messageInsertDTO.setFromUserId(user.getId());
 
         messageService.sendMessage(messageInsertDTO);
@@ -30,8 +31,12 @@ public class MessageController {
 
     @GetMapping("/notReadCount")
     public BaseResponse<Long> notReadCount(@RequestParam("isSystem") Boolean isSystem) {
-        long notReadCount = messageService.notReadCount(isSystem);
-        return ResponseGenerator.returnOK("未读消息查询成功", notReadCount);
+        // 获取当前用户id
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
+
+        long notReadCount = messageService.notReadCount(isSystem, myId);
+        return ResponseGenerator.returnOK("未读消息条数查询成功", notReadCount);
     }
 
     @GetMapping

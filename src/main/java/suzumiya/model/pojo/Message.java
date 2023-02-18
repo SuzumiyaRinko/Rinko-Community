@@ -1,6 +1,9 @@
 package suzumiya.model.pojo;
 
-import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -30,9 +33,9 @@ public class Message implements Serializable {
     // 修改时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
-    // 是否逻辑删除
-    @TableLogic
-    private Boolean isDelete;
+    // 是否逻辑删除（定时清除就行，双方一旦有一方删除某条message的话，那对方也看不见该message）
+//    @TableLogic
+//    private Boolean isDelete;
 
     // 评论的用户的部分信息（id, nickname, avatar）
     @TableField(exist = false)

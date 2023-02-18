@@ -69,7 +69,6 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 //        comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));
 
         /* 新增comment到MySQL */
-
         //TODO 这两行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         comment.setUserId(user.getId());
@@ -103,17 +102,19 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
     @Override
     public void delete(Long commentId) {
-        Integer targetId = commentMapper.getTargetIdByCommentId(commentId);
         Integer targetType = commentMapper.getTargetTypeByCommentId(commentId);
+        Integer targetId = commentMapper.getTargetIdByCommentId(commentId);
 
         /* 在MySQL把comment逻辑删除 */
         commentMapper.deleteById(commentId);
 
         if (targetType == CommonConst.COMMENT_TYPE_2POST) {
+            /* 删除该评论下的所有评论 */
+            commentMapper.deleteCommentByTargetTypeAndTargetId(2, commentId);
             /* comment数 -1 */
             redisTemplate.opsForValue().decrement(RedisConst.POST_COMMENT_COUNT_KEY + targetId);
             /* 添加到待算分Post的Set集合 */
-            redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, commentId);
+            redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, targetId);
         }
     }
 

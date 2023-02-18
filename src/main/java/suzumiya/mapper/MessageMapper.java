@@ -13,7 +13,7 @@ public interface MessageMapper extends BaseMapper<Message> {
 
     List<Message> getSystemMessagesLtId(@Param("toUserId") Long toUserId, @Param("lastId") Long lastId);
 
-    @Select("SELECT content FROM tb_message WHERE (from_user_id = #{fromUserId} AND to_user_id = #{toUserId})" +
+    @Select("SELECT content,is_read FROM tb_message WHERE (from_user_id = #{fromUserId} AND to_user_id = #{toUserId})" +
             "OR (from_user_id = #{toUserId} AND to_user_id = #{fromUserId}) ORDER BY create_time DESC LIMIT 0,1")
     Message getFirstMessageBy2Id(@Param("fromUserId") Long fromUserId, @Param("toUserId") Long toUserId);
 

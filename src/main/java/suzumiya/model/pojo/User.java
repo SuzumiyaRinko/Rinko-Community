@@ -2,6 +2,7 @@ package suzumiya.model.pojo;
 
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -53,6 +54,7 @@ public class User implements UserDetails, Serializable {
     private List<String> authoritiesStr;
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (authoritiesStr == null) {
             return null;
@@ -62,24 +64,28 @@ public class User implements UserDetails, Serializable {
 
     // true: 账号未过期
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true;
     }
 
     // true: 账号未锁定
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return true;
     }
 
     // true: 账号凭证未过期
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
     // true: 账号可用
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return true;
     }

@@ -12,7 +12,7 @@ public interface IMessageService extends IService<Message> {
     void sendMessage(MessageInsertDTO messageInsertDTO);
 
     /* 查询未读消息条数 */
-    long notReadCount(Boolean isSystem);
+    long notReadCount(Boolean isSystem, Long myId);
 
     /* 查询系统消息或对话列表 */
     // 如果查询的是对话列表，那么获得的是每个对话对象的第一条消息

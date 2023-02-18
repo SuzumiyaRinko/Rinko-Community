@@ -1,9 +1,11 @@
 package suzumiya.controller;
 
+import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.CommentInsertDTO;
 import suzumiya.model.dto.CommentSelectDTO;
+import suzumiya.model.pojo.Comment;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.service.ICommentService;
 import suzumiya.util.ResponseGenerator;
@@ -28,8 +30,8 @@ public class CommentController {
     }
 
     @GetMapping
-    public BaseResponse<Object> select(CommentSelectDTO commentSelectDTO) {
-        commentService.select(commentSelectDTO);
-        return ResponseGenerator.returnOK("查询评论成功", null);
+    public BaseResponse<PageInfo<Comment>> select(CommentSelectDTO commentSelectDTO) {
+        PageInfo<Comment> pageInfo = commentService.select(commentSelectDTO);
+        return ResponseGenerator.returnOK("查询评论成功", pageInfo);
     }
 }

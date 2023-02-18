@@ -11,7 +11,7 @@
         SELECT
         <include refid="BASE_COLUMNS"/>
         FROM tb_message
-        WHERE from_user_id = 0 AND to_user_id = #{toUserId} AND is_delete = 0
+        WHERE from_user_id = 0 AND to_user_id = #{toUserId}
         <if test="lastId != null and lastId > 0">
             AND id <![CDATA[<]]> #{lastId}
         </if>
@@ -24,7 +24,7 @@
         <include refid="BASE_COLUMNS"/>
         FROM tb_message
         WHERE (from_user_id = #{fromUserId} AND to_user_id = #{toUserId}) OR (from_user_id = #{toUserId} AND to_user_id
-        = #{fromUserId}) AND is_delete = 0
+        = #{fromUserId})
         <if test="lastId != null and lastId > 0">
             AND id <![CDATA[<]]> #{lastId}
         </if>

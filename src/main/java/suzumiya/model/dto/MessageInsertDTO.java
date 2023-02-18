@@ -7,6 +7,8 @@ import java.io.Serializable;
 @Data
 public class MessageInsertDTO implements Serializable {
 
+    // 我的Id
+    private Long myId;
     // 发送方的userId
     private Long fromUserId;
     // 接收方的userId
@@ -20,7 +22,7 @@ public class MessageInsertDTO implements Serializable {
     private Long eventUserId;
     // postId（可以为null）
     private Long postId;
-
+    // 系统消息类型
     private int SystemMsgType;
     public static final int SYSTEM_TYPE_LIKE = 1;
     public static final int SYSTEM_TYPE_COMMENT = 2;

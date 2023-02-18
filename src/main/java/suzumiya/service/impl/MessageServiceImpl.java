@@ -1,5 +1,6 @@
 package suzumiya.service.impl;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -63,6 +64,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         messageInsertDTO.setContent(WordTreeUtils.replaceAllSensitiveWords(messageInsertDTO.getContent()));
 
         Message message = new Message();
+        Long toUserId = messageInsertDTO.getToUserId();
+        message.setToUserId(toUserId);
 
         if (messageInsertDTO.getIsSystem()) {
             message.setFromUserId(0L);
@@ -86,31 +89,34 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         } else {
             message.setFromUserId(messageInsertDTO.getFromUserId());
             message.setContent(messageInsertDTO.getContent());
-        }
+            /* 更新双方用户的私信列表 */
+            //TODO 这行代码应该被注释
+//        Long myId = 1L;
+            //TODO 这行代码不应该被注释
+            Long myId = messageInsertDTO.getMyId();
 
-        Long toUserId = messageInsertDTO.getToUserId();
-        message.setToUserId(toUserId);
+            double zsScore = RedisUtils.getZSetScoreBy2EpochSecond();
+            redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + myId, toUserId, zsScore);
+            redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + toUserId, myId, zsScore);
+        }
 
         /* 保存message到MySQL */
         messageMapper.insert(message);
-
-        /* 更新双方用户的私信列表 */
-        //TODO 这两行代码不应该被注释掉
-        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
-        double zsScore = RedisUtils.getZSetScoreBy2EpochSecond();
-        redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + myId, toUserId, zsScore);
-        redisTemplate.opsForZSet().add(RedisConst.USER_MESSAGE_KEY + toUserId, myId, zsScore);
     }
 
     @Override
-    public long notReadCount(Boolean isSystem) {
+    public long notReadCount(Boolean isSystem, Long myId) {
+        LambdaQueryWrapper<Message> queryWrapper = new LambdaQueryWrapper<>();
+        // 未读
+        queryWrapper.eq(Message::getIsRead, false);
+        // 发给当前用户的消息
+        queryWrapper.eq(Message::getToUserId, myId);
         if (isSystem) {
-            return messageMapper.selectCount(new LambdaQueryWrapper<Message>().eq(Message::getIsRead, false).eq(Message::getFromUser, 0));
+            queryWrapper.eq(Message::getFromUserId, 0);
         } else {
-            return messageMapper.selectCount(new LambdaQueryWrapper<Message>().eq(Message::getIsRead, false).ne(Message::getFromUser, 0));
+            queryWrapper.ne(Message::getFromUserId, 0);
         }
+        return messageMapper.selectCount(queryWrapper);
     }
 
     @Override
@@ -135,8 +141,12 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             if (ObjectUtil.isNotEmpty(objects)) {
                 for (Object object : objects) {
                     Long fromUserId = (long) (Integer) object;
+                    // 获取最后一次对话内容
                     Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myId);
-                    firstMessage.setFromUser(userMapper.getSimpleUserById(fromUserId));
+                    if (firstMessage != null) {
+                        // 获取对方SimpleUser数据
+                        firstMessage.setFromUser(userMapper.getSimpleUserById(fromUserId));
+                    }
                     messages.add(firstMessage);
                 }
             }
@@ -160,10 +170,15 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
         /* 查询对话双方的详细Message */
         List<Message> chatMessages = messageMapper.getChatMessagesLtId(myId, targetId, lastId);
+        lastId = chatMessages.get(chatMessages.size() - 1).getId();
+        if (ObjectUtil.isNotEmpty(chatMessages)) {
+            // 按照时间由旧到新排序
+            chatMessages = new ArrayList<>(chatMessages);
+            CollectionUtil.reverse(chatMessages);
+        }
 
         /* 返回查询结果 */
         MessageSelectVO messageSelectVO = new MessageSelectVO();
-        lastId = chatMessages.get(chatMessages.size() - 1).getId();
         messageSelectVO.setMessages(chatMessages);
         messageSelectVO.setLastId(lastId);
         return messageSelectVO;

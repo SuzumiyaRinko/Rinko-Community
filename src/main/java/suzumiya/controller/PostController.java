@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
 import suzumiya.model.dto.PostUpdateDTO;
-import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
@@ -53,18 +52,18 @@ public class PostController {
     @PostMapping("/like/{postId}")
     public BaseResponse<Object> like(@PathVariable("postId") Long postId) {
         postService.like(postId);
-        return ResponseGenerator.returnOK("点赞post成功", null);
+        return ResponseGenerator.returnOK("点赞/取消点赞 成功", null);
     }
 
     @PostMapping("/collect/{postId}")
     public BaseResponse<Object> collect(@PathVariable("postId") Long postId) {
         postService.collect(postId);
-        return ResponseGenerator.returnOK("收藏post成功", null);
+        return ResponseGenerator.returnOK("收藏/取消收藏 成功", null);
     }
 
-    @GetMapping("/{postId}")
-    public BaseResponse<Post> getPostByPostId(@PathVariable("postId") Long postId) {
-        Post post = postService.getPostByPostId(postId);
-        return ResponseGenerator.returnOK("查询post成功", post);
-    }
+//    @GetMapping("/{postId}")
+//    public BaseResponse<Post> getPostByPostId(@PathVariable("postId") Long postId) {
+//        Post post = postService.getPostByPostId(postId);
+//        return ResponseGenerator.returnOK("查询post成功", post);
+//    }
 }

@@ -148,4 +148,17 @@ public class TestMySQL {
         messageInsertDTO.setIsSystem(true);
         messageService.sendMessage(messageInsertDTO);
     }
+
+    @Test
+    void testTop10() {
+        List<Post> top10PostWithIdAndIsWonderful = postMapper.getTop10PostWithIdAndIsWonderful();
+        for (Post post : top10PostWithIdAndIsWonderful) {
+            System.out.println(post);
+        }
+    }
+
+    @Test
+    void testCommentMapper() {
+        commentMapper.deleteCommentByTargetTypeAndTargetId(2, 1L);
+    }
 }
