@@ -29,6 +29,7 @@ import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
+import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
@@ -75,7 +76,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public String login(User user, HttpServletRequest request) {
+    public String login(UserLoginDTO userLoginDTO, HttpServletRequest request) {
         /* 判断该ip是否暂时不允许登录（账号密码连续输错5次） */
         String ip = request.getRemoteHost().replaceAll(":", "-"); // 原ip大概是 0:0:0:0:0:0:0:1
         Object cnt = redisTemplate.opsForValue().get(RedisConst.LOGIN_RETRY_USER_KEY + ip);
@@ -85,8 +86,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         /* 判断注册的账号密码是否符合要求 */
-        String username = user.getUsername();
-        String password = user.getPassword();
+        String username = userLoginDTO.getUsername();
+        String password = userLoginDTO.getPassword();
         if (username != null && !(username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD))) {
             throw new RuntimeException("账号或密码不符合要求");
         }
@@ -94,7 +95,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 生成Authentication对象，让SS做校验 */
         // 获取当前用户的salt
         // username为null不会抛异常
-        User existedUser = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, user.getUsername()));
+        User existedUser = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, userLoginDTO.getUsername()));
         // 判断账号不存在
         if (existedUser == null) {
             throw new RuntimeException("该账号不存在");
@@ -103,9 +104,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (existedUser.getActivation() == 0) {
             throw new RuntimeException("该账号未激活");
         }
-        user.setSalt(existedUser.getSalt());
+        userLoginDTO.setSalt(existedUser.getSalt());
         // 验证账号密码
-        Authentication authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword() + user.getSalt());
+        Authentication authenticationToken = new UsernamePasswordAuthenticationToken(userLoginDTO.getUsername(), userLoginDTO.getPassword() + userLoginDTO.getSalt());
         Authentication authentication;
         try {
             // SS返回UserDetail
@@ -169,6 +170,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String password = userRegisterDTO.getPassword();
         if (username != null && !(username.matches(CommonConst.REGEX_EMAIL) && password.matches(CommonConst.REGEX_PASSWORD))) {
             throw new RuntimeException("账号或密码不符合要求");
+        }
+
+        /* 判断password和confirmPassword是否一致 */
+        String confirmPassword = userRegisterDTO.getConfirmPassword();
+        if (!StrUtil.equals(password, confirmPassword)) {
+            throw new RuntimeException("两次密码输入不一致");
         }
 
         /* 判断当前用户名是否已经存在 */

@@ -3,8 +3,8 @@ package suzumiya.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
-import suzumiya.model.pojo.User;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.service.IUserService;
@@ -24,9 +24,9 @@ public class UserController {
     private IUserService userService;
 
     @PostMapping("/login")
-    public BaseResponse<String> login(@RequestBody User user, HttpServletRequest request) {
+    public BaseResponse<String> login(@RequestBody UserLoginDTO userLoginDTO, HttpServletRequest request) {
         /* 用户登录 */
-        String token = userService.login(user, request);
+        String token = userService.login(userLoginDTO, request);
         return ResponseGenerator.returnOK("用户登录成功", token);
     }
 

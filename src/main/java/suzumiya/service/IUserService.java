@@ -1,6 +1,7 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
@@ -12,7 +13,7 @@ import java.io.IOException;
 public interface IUserService extends IService<User> {
 
     /* 用户登录 */
-    String login(User user, HttpServletRequest request);
+    String login(UserLoginDTO userLoginDTO, HttpServletRequest request);
 
     /* 用户登出 */
     void logout();

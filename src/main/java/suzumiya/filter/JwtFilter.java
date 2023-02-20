@@ -53,6 +53,7 @@ public class JwtFilter extends OncePerRequestFilter {
         anonymousURIs.add(SERVLET_CONTEXT + "/user/login");
         anonymousURIs.add(SERVLET_CONTEXT + "/user/register");
         anonymousURIs.add(SERVLET_CONTEXT + "/user/activation");
+        anonymousURIs.add(SERVLET_CONTEXT + "/test");
     }
 
     private static final String TOKEN_KEY = "114514"; // Token密钥
