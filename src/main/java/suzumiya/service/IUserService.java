@@ -5,6 +5,7 @@ import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
+import suzumiya.model.vo.UserInfoVo;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,4 +38,6 @@ public interface IUserService extends IService<User> {
     int FOLLOWINGS_STANDARD_PAGE_SIZE = 30;
 
     FollowingSelectVO getFollowings(Long lastId);
+
+    UserInfoVo getUserInfo(Long userId);
 }

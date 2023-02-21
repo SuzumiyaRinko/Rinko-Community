@@ -13,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import suzumiya.constant.SecurityConst;
 import suzumiya.filter.JwtFilter;
 import suzumiya.filter.StatisticsFilter;
 
@@ -43,8 +42,12 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 不通过Session获取SecurityContext（前后端分离的情况下就要设置这个）
                 .and()
                 .authorizeRequests(authorize -> authorize
-                        .antMatchers("/test/**").hasAnyAuthority(SecurityConst.SYS_BOOK)
-                        .anyRequest().permitAll()) // 登录用户和匿名用户都可以访问
+//                        .antMatchers("/test/**").hasAnyAuthority(SecurityConst.SYS_BOOK)
+                        .antMatchers("/verifyCode").permitAll()
+                        .antMatchers("/user/login").anonymous()
+                        .antMatchers("/user/register").anonymous()
+                        .antMatchers("/user/activation").anonymous()
+                        .anyRequest().authenticated()) // 登录用户和匿名用户都可以访问
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(statisticsFilter, FilterSecurityInterceptor.class)
                 .cors(); // 允许跨域访问

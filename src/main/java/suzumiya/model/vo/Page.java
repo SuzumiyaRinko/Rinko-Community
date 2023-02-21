@@ -1,4 +1,4 @@
-package suzumiya.model.dto;
+package suzumiya.model.vo;
 
 import lombok.Data;
 

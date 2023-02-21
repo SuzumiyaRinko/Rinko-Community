@@ -1,19 +1,26 @@
 package suzumiya.constant;
 
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
+@Component
 public class CommonConst {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /* 服务层 */
     /* User */
-    public static final String PREFIX_ACTIVATION_URL = "http://localhost:8080/user/activation/";
-    public static final String USER_LOGIN_URL = "#";
-    public static final String USER_REGISTER_URL = "#";
+    public static final String PREFIX_ACTIVATION_URL = "http://localhost:8080/Rinko-Community/user/activation/";
+    public static final String USER_LOGIN_URL = "http://localhost/";
+    public static final String USER_REGISTER_URL = "http://localhost/";
     public static final String MAIL_FROM = "Txz2018911711@163.com";
+    public static final String DEFAULT_AVATAR = "/default_avatar.png";
     /* Comment */
     public static final int COMMENT_TYPE_2POST = 1;
     public static final int COMMENT_TYPE_2COMMENT = 2;
@@ -28,35 +35,52 @@ public class CommonConst {
     public static final String REGEX_EMAIL = "^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$";
 
     /* 网页 */
-    public static final String HTML_ACTIVATION = "<html>\n" +
-            "<body>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 700; font-size: 42px; margin-top: 10px\">欢迎用户</h2>\n" +
-            "\t<h2 style=\"text-decoration: none; color: black; text-align: center; font-weight: 500; font-size: 30px;\"> <xxxxx> </h2>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 700; font-size: 42px; margin-top: 10px\">使用Rinko-Community</h2>\n" +
-            "\t<div style=\"text-align: center\">\n" +
-            "\t\t<a class=\"font\" style=\"text-decoration: none; font-weight: 400; font-size: 24px; color: red;\" href='<yyyyy>'><点击此处跳转到账号激活页面></a>\n" +
-            "\t</div>\n" +
-            "</body></html>";
-    public static final String HTML_ACTIVATION_SUCCESS = "<html>\n" +
-            "<title>Rinko-Community | 账号激活</title>\n" +
-            "<body>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 700; font-size: 42px; margin-top: 10px\">欢迎用户</h2>\n" +
-            "\t<h2 style=\"text-decoration: none; color: black; text-align: center; font-weight: 500; font-size: 30px;\"> <xxxxx> </h2>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 700; font-size: 42px; margin-top: 10px\">使用Rinko-Community</h2>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 400; font-size: 24px; color: red; margin-top: -10px;\">该账号已激活！</h2>\n" +
-            "\t<div style=\"text-align: center\">\n" +
-            "\t\t<a class=\"font\" style=\"text-decoration: none; font-weight: 400; font-size: 18px; color: red;\" href='<yyyyy>' target=\"_blank\"><点击此处跳转到账号登录页面></a>\n" +
-            "\t</div>\n" +
-            "</body>\n" +
-            "</html>";
-    public static final String HTML_ACTIVATION_EXPIRED = "<html>\n" +
-            "<title>Rinko-Community | 账号激活</title>\n" +
-            "<body>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 700; font-size: 42px; margin-top: 10px\">欢迎用户使用Rinko-Community</h2>\n" +
-            "\t<h2 style=\"text-align: center; font-weight: 400; font-size: 24px; color: red; margin-top: -10px;\">账号激活超时，请重新注册！</h2>\n" +
-            "\t<div style=\"text-align: center\">\n" +
-            "\t\t<a class=\"font\" style=\"text-decoration: none; font-weight: 400; font-size: 18px; color: red;\" href='<yyyyy>' target=\"_blank\"><点击此处跳转到账号注册页面></a>\n" +
-            "\t</div>\n" +
-            "</body>\n" +
-            "</html>";
+    public static String HTML_ACTIVATION = null;
+    public static String HTML_ACTIVATION_SUCCESS = null;
+    public static String HTML_ACTIVATION_EXPIRED = null;
+
+    static {
+        InputStream in1 = null;
+        InputStream in2 = null;
+        InputStream in3 = null;
+        try {
+            // HTML_ACTIVATION
+            in1 = new ClassPathResource("static/html/html_activation.txt").getInputStream();
+            StringBuilder sb = new StringBuilder();
+            byte[] bytes = new byte[1024];
+            int cnt;
+            while ((cnt = in1.read(bytes)) != -1) {
+                sb.append(new String(bytes, 0, cnt));
+            }
+            HTML_ACTIVATION = sb.toString();
+
+            // HTML_ACTIVATION_SUCCESS
+            in2 = new ClassPathResource("static/html/html_activation_success.txt").getInputStream();
+            sb = new StringBuilder();
+            bytes = new byte[1024];
+            while ((cnt = in2.read(bytes)) != -1) {
+                sb.append(new String(bytes, 0, cnt));
+            }
+            HTML_ACTIVATION_SUCCESS = sb.toString();
+
+            // HTML_ACTIVATION_EXPIRED
+            in3 = new ClassPathResource("static/html/html_activation_expired.txt").getInputStream();
+            sb = new StringBuilder();
+            bytes = new byte[1024];
+            while ((cnt = in3.read(bytes)) != -1) {
+                sb.append(new String(bytes, 0, cnt));
+            }
+            HTML_ACTIVATION_EXPIRED = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                in1.close();
+                in2.close();
+                in3.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

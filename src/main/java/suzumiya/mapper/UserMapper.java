@@ -23,7 +23,7 @@ public interface UserMapper extends BaseMapper<User> {
 
     List<User> getFollowings(@Param("followingIds") List<Long> followingIds);
 
-    @Select("SELECT id,nickname,is_famous,avatar FROM sys_user WHERE is_delete = 0")
+    @Select("SELECT id,nickname,gender,is_famous,avatar FROM sys_user WHERE is_delete = 0")
     List<User> getSimpleUsers();
 
     @Delete("DELETE FROM sys_user WHERE is_delete = 1")

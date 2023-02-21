@@ -36,6 +36,7 @@ import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.*;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
+import suzumiya.model.vo.Page;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;

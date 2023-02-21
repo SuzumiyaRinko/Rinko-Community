@@ -7,10 +7,10 @@ import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.FollowingSelectVO;
+import suzumiya.model.vo.UserInfoVo;
 import suzumiya.service.IUserService;
 import suzumiya.util.ResponseGenerator;
 
-import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -38,7 +38,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public BaseResponse<String> register(@RequestBody UserRegisterDTO userRegisterDTO) throws MessagingException {
+    public BaseResponse<String> register(@RequestBody UserRegisterDTO userRegisterDTO) {
         /* 用户注册 */
         userService.register(userRegisterDTO);
         return ResponseGenerator.returnOK("用户注册成功", null);
@@ -66,5 +66,11 @@ public class UserController {
         /* 获取当前用户的关注列表 */
         FollowingSelectVO followingSelectVO = userService.getFollowings(lastId);
         return ResponseGenerator.returnOK("查询关注列表成功", followingSelectVO);
+    }
+
+    @GetMapping("/userInfo")
+    public BaseResponse<UserInfoVo> getUserInfo(@RequestParam(value = "userId", required = false) Long userId) {
+        UserInfoVo userInfo = userService.getUserInfo(userId);
+        return ResponseGenerator.returnOK("成功查询用户基础信息", userInfo);
     }
 }

@@ -20,9 +20,7 @@ public class TestMail {
 
     @Test
     void testMail() throws MessagingException {
-//        MailUtils.sendMail(CommonConst.MAIL_FROM, List.of("2018911711@qq.com"), "202302060932", null, CommonConst.HTML_ACTIVATION_SUCCESS, null);
         Long time1 = System.currentTimeMillis();
-//        MailUtils.sendMail("Txz2018911711@163.com", List.of("1@qq.com"), "202302060932", null, CommonConst.HTML_ACTIVATION_SUCCESS, null);
         MailUtils.sendMail("Txz2018911711@163.com", List.of("3233219183@qq.com"), "202302060932", null, CommonConst.HTML_ACTIVATION_SUCCESS, null);
         Long time2 = System.currentTimeMillis();
         System.out.println((time2-time1) + "ms");

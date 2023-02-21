@@ -2,7 +2,7 @@
 //
 //import lombok.Data;
 //import suzumiya.model.pojo.HotelDoc;
-//import suzumiya.model.dto.Page;
+//import suzumiya.model.vo.Page;
 //
 //import java.util.List;
 //import java.util.Map;

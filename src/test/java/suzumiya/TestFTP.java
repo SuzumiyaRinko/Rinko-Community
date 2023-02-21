@@ -9,7 +9,6 @@ import org.springframework.core.io.ClassPathResource;
 import suzumiya.util.FTPUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -21,7 +20,7 @@ public class TestFTP {
     @Test
     void testFTP() throws IOException {
         ClassPathResource resource = new ClassPathResource("static/1.jpg");
-        boolean result = FTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
+        String result = FTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
         System.out.println("result = " + result);
     }
 }

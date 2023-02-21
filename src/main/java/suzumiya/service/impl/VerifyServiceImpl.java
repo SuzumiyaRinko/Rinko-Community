@@ -24,7 +24,7 @@ public class VerifyServiceImpl implements IVerifyService {
         VerifyCodeVO verifyCodeVO = new VerifyCodeVO();
         /* 生成文字验证码 */
         String content = kaptcha.createText();
-        verifyCodeVO.setCode(kaptcha.createText());
+        verifyCodeVO.setCode(content);
         /* 生成图片验证码 */
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         BufferedImage image = kaptcha.createImage(content);

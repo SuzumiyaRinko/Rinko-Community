@@ -33,6 +33,7 @@ import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
+import suzumiya.model.vo.UserInfoVo;
 import suzumiya.service.IUserService;
 
 import javax.annotation.Resource;
@@ -160,7 +161,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         /* 判断验证码是否正确 */
-        if (!StrUtil.equals(userRegisterDTO.getCorrectCode(), userRegisterDTO.getCode())) {
+        String correctCode = userRegisterDTO.getCorrectCode().toLowerCase();
+        String code = userRegisterDTO.getCode().toLowerCase();
+        if (!StrUtil.equals(correctCode, code)) {
             // 因为前端有检测，不正确说明用户绕过了前端，所以直接抛异常即可
             throw new RuntimeException("验证码不正确");
         }
@@ -195,6 +198,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         String uuid = UUID.randomUUID().toString();
         newUser.setActivationUUID(uuid);
+        newUser.setNickname("user_" + uuid.substring(0, 8));
+        newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
         userMapper.insert(newUser);
 
         /* 记录该IP 24小时内的注册次数 */
@@ -312,6 +317,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         followingSelectVO.setFollowings(followings);
         followingSelectVO.setLastId(lastId);
         return followingSelectVO;
+    }
+
+    @Override
+    public UserInfoVo getUserInfo(Long userId) {
+        // userId为空 则获取自己的信息
+        if (userId == null) {
+            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            userId = user.getId();
+        }
+
+        UserInfoVo userInfoVo = new UserInfoVo();
+        // SimpleUser数据
+        User simpleUser = userMapper.getSimpleUserById(userId);
+        userInfoVo.setId(simpleUser.getId());
+        userInfoVo.setNickname(simpleUser.getNickname());
+        userInfoVo.setGender(simpleUser.getGender());
+        userInfoVo.setIsFamous(simpleUser.getIsFamous());
+        userInfoVo.setAvatar(simpleUser.getAvatar());
+        // followingsCount和followersCount
+        Long followingsCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
+        Long followersCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
+        followingsCount = followingsCount != null ? followingsCount : 0;
+        followersCount = followersCount != null ? followersCount : 0;
+        userInfoVo.setFollowingsCount(followingsCount);
+        userInfoVo.setFollowersCount(followersCount);
+
+        return userInfoVo;
     }
 
     private boolean checkLogin(Serializable userId) {

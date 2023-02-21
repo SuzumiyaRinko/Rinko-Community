@@ -3,14 +3,12 @@ package suzumiya.util;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -50,24 +48,27 @@ public class FTPUtils {
         }
     }
 
-    public static boolean uploadFile(String fileName, InputStream inputStream) throws IOException {
+    // 返回文件路径，比如 /ftp/20230221/xxxxxx.png
+    public static String uploadFile(String fileName, InputStream inputStream) throws IOException {
         if (!ftpClient.isConnected()) {
-            return false;
+            return null;
         }
         String directory = LocalDate.now().format(formatter);
+        String finalName = null;
         try {
-            ftpClient.changeWorkingDirectory(directory);
+//            ftpClient.changeWorkingDirectory(directory);
 //            ftpClient.enterLocalPassiveMode(); // 开启了就会很慢
             // 生成最终文件名
             String suffix = fileName.substring(fileName.lastIndexOf("."));
-            String finalName = UUID.randomUUID() + suffix;
+            finalName = UUID.randomUUID() + suffix;
             ftpClient.storeFile(finalName, inputStream);
         } catch (IOException e) {
             e.printStackTrace();
-            return false;
+            return null;
         } finally {
             inputStream.close();
         }
-        return true;
+//        return "/ftp/" + directory + "/" + finalName;
+        return "/ftp/" + finalName;
     }
 }

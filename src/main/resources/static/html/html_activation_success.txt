@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- <meta name="viewport" content="width=device-width,initial-scale=1.0"> -->
+  <link rel="icon" href="http://192.168.66.150/resources/favicon.ico">
+  <title>
+    Rinko-Community | 账号激活成功
+  </title>
+  <style>
+    .top {
+      text-align: center;
+      opacity: 0.8;
+    }
+
+    .top .logo {
+      margin: 0 auto;
+      display: flex;
+      margin-top: 5px;
+    }
+
+    .top .title {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      font-family: "Microsoft YaHei";
+      margin-bottom: 25px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="top">
+    <img class="logo" src="http://192.168.66.150/resources/logo.png" alt="logo" />
+    <div class="title">
+      <span>Rinko-Community</span>
+    </div>
+  </div>
+  <h2 class="font" style="text-align: center; font-weight: 700; font-size: 26px; margin-top: 10px">欢迎用户</h2>
+  <h2 style="text-decoration: none; color: black; text-align: center; font-weight: 500; font-size: 30px;">
+    <xxxxx>
+  </h2>
+
+  <h2 style="text-align: center; font-weight: 400; font-size: 20px; color: red; margin-top: 20px;">账号已激活！</h2>
+
+  <div style="text-align: center">
+    <a class="font" style="text-decoration: none; font-weight: 400; font-size: 20px; color: red;" href='<yyyyy>'
+      target="_blank">
+      <点击此处跳转到账号登录页面>
+    </a>
+  </div>
+</body>
+
+</html>

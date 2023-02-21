@@ -1,7 +1,6 @@
 package suzumiya.model.vo;
 
 import lombok.Data;
-import suzumiya.model.dto.Page;
 import suzumiya.model.pojo.Post;
 
 import java.io.Serializable;
