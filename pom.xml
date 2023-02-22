@@ -152,6 +152,10 @@
             <artifactId>commons-net</artifactId>
             <version>3.8.0</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
         <!-- 工具类 -->
         <dependency>
             <groupId>cn.hutool</groupId>

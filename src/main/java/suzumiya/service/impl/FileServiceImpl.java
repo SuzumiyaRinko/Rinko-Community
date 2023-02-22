@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.pojo.User;
 import suzumiya.service.IFileService;
-import suzumiya.util.FTPUtils;
+import suzumiya.util.TestFTPUtils;
 
 import java.io.IOException;
 
@@ -21,7 +21,7 @@ public class FileServiceImpl implements IFileService {
     public String uploadAvatar(MultipartFile multipartFile) throws IOException {
         // 获取上传的文件的文件名
         String originalFilename = multipartFile.getOriginalFilename();
-        String path = FTPUtils.uploadFile(originalFilename, multipartFile.getInputStream());
+        String path = TestFTPUtils.uploadFile(originalFilename, multipartFile.getInputStream());
 
         // 判空
         if (path == null) {

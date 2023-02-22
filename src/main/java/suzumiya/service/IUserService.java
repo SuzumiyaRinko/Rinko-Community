@@ -3,6 +3,7 @@ package suzumiya.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
+import suzumiya.model.dto.UserUpdateDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
@@ -40,4 +41,6 @@ public interface IUserService extends IService<User> {
     FollowingSelectVO getFollowings(Long lastId);
 
     UserInfoVo getUserInfo(Long userId);
+
+    void updateUserInfo(UserUpdateDTO userUpdateDTO);
 }

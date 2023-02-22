@@ -3,11 +3,14 @@ package suzumiya.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
+import suzumiya.model.dto.UserUpdateDTO;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
+import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
 import suzumiya.util.ResponseGenerator;
 
@@ -23,6 +26,9 @@ public class UserController {
     @Autowired
     private IUserService userService;
 
+    @Autowired
+    private IFileService fileService;
+
     @PostMapping("/login")
     public BaseResponse<String> login(@RequestBody UserLoginDTO userLoginDTO, HttpServletRequest request) {
         /* 用户登录 */
@@ -34,7 +40,7 @@ public class UserController {
     public BaseResponse<String> logout() {
         /* 用户登出 */
         userService.logout();
-        return ResponseGenerator.returnOK("用户登出成功", null);
+        return ResponseGenerator.returnOK("用户退出登录成功", null);
     }
 
     @PostMapping("/register")
@@ -72,5 +78,17 @@ public class UserController {
     public BaseResponse<UserInfoVo> getUserInfo(@RequestParam(value = "userId", required = false) Long userId) {
         UserInfoVo userInfo = userService.getUserInfo(userId);
         return ResponseGenerator.returnOK("成功查询用户基础信息", userInfo);
+    }
+
+    @PostMapping("/uploadAvatar")
+    public BaseResponse<String> uploadAvatar(MultipartFile file) throws IOException {
+        String path = fileService.uploadAvatar(file);
+        return ResponseGenerator.returnOK("成功上传文件", path);
+    }
+
+    @PostMapping("/updateUserInfo")
+    public BaseResponse<Object> updateUserInfo(@RequestBody UserUpdateDTO userUpdateDTO) throws IOException {
+        userService.updateUserInfo(userUpdateDTO);
+        return ResponseGenerator.returnOK("用户信息修改成功", null);
     }
 }

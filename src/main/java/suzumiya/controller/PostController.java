@@ -19,6 +19,8 @@ public class PostController {
     @Autowired
     private IPostService postService;
 
+    @GetMapping
+
     @PostMapping("/insert")
     public BaseResponse<Object> insert(@RequestBody PostInsertDTO postInsertDTO) {
         postService.insert(postInsertDTO);
@@ -46,7 +48,7 @@ public class PostController {
     @GetMapping("/search/suggestions")
     public BaseResponse<Set<String>> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
         Set<String> suggestions = postService.suggest(searchKey);
-        return ResponseGenerator.returnOK("", suggestions);
+        return ResponseGenerator.returnOK("联想查询成功", suggestions);
     }
 
     @PostMapping("/like/{postId}")

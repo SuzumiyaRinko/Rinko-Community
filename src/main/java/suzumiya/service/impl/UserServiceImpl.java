@@ -31,6 +31,7 @@ import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
+import suzumiya.model.dto.UserUpdateDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
@@ -344,6 +345,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userInfoVo.setFollowersCount(followersCount);
 
         return userInfoVo;
+    }
+
+    @Override
+    public void updateUserInfo(UserUpdateDTO userUpdateDTO) {
+        String nickname = userUpdateDTO.getNickname();
+        Integer gender = userUpdateDTO.getGender();
+        if (StrUtil.isBlank(nickname) || nickname.length() > 20) {
+            throw new RuntimeException("名称长度不符合要求");
+        }
+        /* 存储至MySQL */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+        User t = new User();
+        t.setId(myUserId);
+        if (StrUtil.isNotBlank(nickname)) {
+            t.setNickname(nickname);
+        }
+        t.setGender(gender);
+        userMapper.updateById(t);
+
+        /* 清除Caffeine缓存 */
+        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
     }
 
     private boolean checkLogin(Serializable userId) {

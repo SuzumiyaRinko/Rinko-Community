@@ -6,7 +6,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.io.ClassPathResource;
-import suzumiya.util.FTPUtils;
+import suzumiya.util.TestFTPUtils;
 
 import java.io.IOException;
 
@@ -20,7 +20,8 @@ public class TestFTP {
     @Test
     void testFTP() throws IOException {
         ClassPathResource resource = new ClassPathResource("static/1.jpg");
-        String result = FTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
+//        String result = FTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
+        String result = TestFTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
         System.out.println("result = " + result);
     }
 }

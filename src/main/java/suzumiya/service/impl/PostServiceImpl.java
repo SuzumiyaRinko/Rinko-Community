@@ -236,6 +236,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         long userId = postSearchDTO.getUserId();
         int sortType = postSearchDTO.getSortType();
         int pageNum = postSearchDTO.getPageNum();
+
+        /* 判断isSearchMyself */
+        if (postSearchDTO.getIsSearchMyself()) {
+            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            userId = user.getId();
+        }
+
         String cacheKey = null;
         boolean isCache = false;
         boolean flag = false;
@@ -243,7 +250,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 判断isCache和cacheKey */
         if (StrUtil.isBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
             isCache = true;
-            cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum;
+            cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum; // 查个人post时，按照时间降序查
         } else if (StrUtil.isBlank(searchKey) && userId <= 0) {
             isCache = true;
             cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
@@ -264,17 +271,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 BeanUtil.fillBeanWithMap(entries, postSearchVO, null);
                 flag = true;
             }
+        }
 
-            // ES
-            if (!flag) {
-                // 根据HotelSearchDTO生成SearchQuery对象 */
-                NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
-                // 查询结果
-                SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
-                // 解析结果
-                postSearchVO = parseSearchHits(postSearchDTO, searchHits);
-            }
-        } else {
+        if (!isCache || !flag) {
             /* 查询ES */
             // 根据HotelSearchDTO生成SearchQuery对象
             NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
@@ -284,6 +283,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             postSearchVO = parseSearchHits(postSearchDTO, searchHits);
         }
 
+        /* 获取并为post设置SimpleUser */
         List<Post> posts = postSearchVO.getPage().getData();
         for (Post post : posts) {
             Long postUserId = post.getUserId();

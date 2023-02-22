@@ -55,7 +55,8 @@ mybatis-plus:
   type-aliases-package: suzumiya.model.pojo
 
 ftp:
-  ftp_address: 192.168.66.150
-  ftp_port: 21
-  ftp_username: ftp
-  ftp_password: 123456
+  host: 192.168.66.150
+  port: 21
+  username: ftp
+  password: 123456
+  encoding: UTF-8

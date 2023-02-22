@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
@@ -16,16 +15,16 @@ import java.util.UUID;
 public class FTPUtils {
 
     // IP
-    @Value("${ftp.ftp_address}")
+    @Value("${ftp.host}")
     private String FTP_ADDRESS;
     // 端口号
-    @Value("${ftp.ftp_port}")
+    @Value("${ftp.port}")
     private int FTP_PORT;
     // 用户名
-    @Value("${ftp.ftp_username}")
+    @Value("${ftp.username}")
     private String FTP_USERNAME;
     // 密码
-    @Value("${ftp.ftp_password}")
+    @Value("${ftp.password}")
     private String FTP_PASSWORD;
     // 客户端
     public static final FTPClient ftpClient = new FTPClient();
@@ -54,7 +53,7 @@ public class FTPUtils {
         if (!ftpClient.isConnected()) {
             return null;
         }
-        String directory = LocalDate.now().format(formatter);
+//        String directory = LocalDate.now().format(formatter);
         String finalName = null;
         try {
 //            ftpClient.changeWorkingDirectory(directory);

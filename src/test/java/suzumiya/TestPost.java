@@ -29,7 +29,7 @@ public class TestPost {
     void testPostInsert() throws InterruptedException {
         PostInsertDTO postInsertDTO = new PostInsertDTO();
         postInsertDTO.setTitle("坤坤打飞机后的产后护理");
-        postInsertDTO.setContent("坤坤的产后护理是非常麻烦的麻烦的傻逼xxx打飞机芜湖");
+        postInsertDTO.setContent("坤坤的产后护理是非常麻烦，*((!@!@$#)@_*%@!)@_");
         postInsertDTO.setTagIDs(List.of(1, 3));
         postService.insert(postInsertDTO);
     }
