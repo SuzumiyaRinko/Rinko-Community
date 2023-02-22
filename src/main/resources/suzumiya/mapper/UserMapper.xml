@@ -7,7 +7,7 @@
     </sql>
 
     <sql id="SIMPLE_COLUMNS">
-        id, nickname, is_famous, avatar
+        id, nickname, gender, is_famous, avatar
     </sql>
 
     <!-- User getUserById(Long userId) -->
@@ -29,13 +29,6 @@
         JOIN sys_authority a
         ON ra.authority_id = a.id
         WHERE user_id = #{userId}
-    </select>
-
-    <!-- User getSimpleUserById(@Param("userId") Long userId) -->
-    <select id="getSimpleUserById" resultType="User">
-        SELECT
-        <include refid="SIMPLE_COLUMNS"/>
-        FROM sys_user WHERE id = #{userId} AND is_delete = 0
     </select>
 
     <!-- List<User> getFollowings(@Param("followingIds") List<Long> followingIds) -->
