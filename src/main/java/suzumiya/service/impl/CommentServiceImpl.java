@@ -1,5 +1,6 @@
 package suzumiya.service.impl;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -71,7 +72,8 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         /* 新增comment到MySQL */
         //TODO 这两行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        comment.setUserId(user.getId());
+        Long myUserId = user.getId();
+        comment.setUserId(myUserId);
 //        comment.setUserId(1L); // 这行代码应该被注释掉
 
         Integer targetType = commentInsertDTO.getType();
@@ -88,15 +90,17 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, targetId);
 
             /* 发送系统消息（异步） */
-            Long postId = commentInsertDTO.getTargetId();
-            Long toUserId = postMapper.getUserIdByPostId(postId);
-
-            MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
-            messageInsertDTO.setToUserId(toUserId);
-            messageInsertDTO.setIsSystem(true);
-            messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COMMENT);
-            messageInsertDTO.setPostId(postId);
-            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+            Long userIdByPostId = Long.valueOf(commentMapper.getUserIdByCommentId(comment.getId()));
+            if (!ObjectUtil.equals(myUserId, userIdByPostId)) {
+                Long postId = commentInsertDTO.getTargetId();
+                Long toUserId = postMapper.getUserIdByPostId(postId);
+                MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+                messageInsertDTO.setToUserId(toUserId);
+                messageInsertDTO.setIsSystem(true);
+                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COMMENT);
+                messageInsertDTO.setPostId(postId);
+                rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+            }
         }
     }
 
@@ -151,8 +155,10 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 
         // 2 查询结果并返回
         LambdaQueryWrapper<Comment> queryWrapper = new LambdaQueryWrapper<>();
-        // 2.1 comment的target类型
+        // 2.1 comment的targetType
         queryWrapper.eq(Comment::getTargetType, targetType);
+        // 2.2 comment的targetId
+        queryWrapper.eq(Comment::getTargetId, targetId);
         // 如果是对post的评论
         if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {
             // 判断查询类型是 "所有"还是"只看楼主"

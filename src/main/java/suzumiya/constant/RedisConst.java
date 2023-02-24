@@ -6,7 +6,7 @@ public class RedisConst {
     // 某个用户的访问API的频率
     public static final String USER_FREQUENCY_KEY = "user:frequency:"; // user:frequency:
     // 某个用户是否被ban掉（30s）
-    public static final String USER_BAN_KEY = "user:ban:"; // user:ban:
+    public static final String USER_BAN_KEY = "user:ban:"; // user:ban:{ip}
     // 密码错误的重试次数
     public static final String LOGIN_RETRY_USER_KEY = "login:retry:user:"; // login:retry:user:{ip}
     // 已经登录了的用户的用户信息
@@ -15,7 +15,7 @@ public class RedisConst {
     public static final String ACTIVATION_USER_KEY = "activate:user:"; // activate:user:{activationUUID}
     // 某IP 24小时内的注册次数
     public static final String REGISTER_TIMES_KEY = "registerTimes:"; // registerTimes:{ip}
-    // 某个user的collection的set集合
+    // 某个user的collection的zset集合
     public static final String USER_COLLECTIONS_KEY = "user:collections:"; // user:collections:{userId}
     // 某个user的following的set集合
     public static final String USER_FOLLOWING_KEY = "user:following:"; // user:following:{userId}
@@ -25,6 +25,8 @@ public class RedisConst {
     public static final String USER_MESSAGE_KEY = "user:message:"; // user:message:{userId}
 
     /* Post */
+    // 当前post总数
+    public static final String POST_TOTAL_KEY = "post:total";
     // 要刷新分数的post集合
     public static final String POST_SCORE_UPDATE_KEY = "post:scoreUpdate";
     // 某个post的like数

@@ -3,7 +3,6 @@ package suzumiya.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
-import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
 
@@ -19,7 +18,7 @@ public interface IPostService extends IService<Post> {
     void delete(Long postId);
 
     /* 更新 */
-    void update(PostUpdateDTO postUpdateDTO);
+//    void update(PostUpdateDTO postUpdateDTO);
 
     /* 查询 */
     PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException;
@@ -35,6 +34,15 @@ public interface IPostService extends IService<Post> {
 
     /* 收藏或取消收藏 */
     void collect(Long postId);
+
+    /* 判断是否已点赞 */
+    Boolean hasLike(Long postId);
+
+    /* 判断是否已收藏 */
+    Boolean hasCollect(Long postId);
+
+    /* 查询某个用户的CollectionPost */
+    PostSearchVO getCollections(Integer pageNum);
 
     /* 根据postId获取post */
     Post getPostByPostId(Long postId);

@@ -92,6 +92,8 @@ public class TestRedis {
     }
 
     @Test
-    void testMGet() {
+    void testNum() {
+        Object o = redisTemplate.opsForValue().get(RedisConst.POST_LIKE_COUNT_KEY + 1);
+        System.out.println();
     }
 }

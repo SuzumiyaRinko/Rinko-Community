@@ -20,6 +20,9 @@ public interface CommentMapper extends BaseMapper<Comment> {
     @Select("SELECT target_id FROM tb_comment WHERE id = #{commentId}")
     Integer getTargetIdByCommentId(@Param("commentId") Long commentId);
 
+    @Select("SELECT user_id FROM tb_comment WHERE id = #{commentId}")
+    Integer getUserIdByCommentId(@Param("commentId") Long commentId);
+
     @Delete("UPDATE tb_comment SET is_delete = 1 WHERE target_type = #{targetType} AND target_id = #{targetId}")
     void deleteCommentByTargetTypeAndTargetId(@Param("targetType") Integer targetType, @Param("targetId") Long targetId);
 }

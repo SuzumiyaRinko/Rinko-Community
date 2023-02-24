@@ -4,15 +4,11 @@ import lombok.Data;
 import suzumiya.model.pojo.Post;
 
 import java.io.Serializable;
-import java.util.Set;
+import java.util.List;
 
 @Data
 public class PostSearchVO implements Serializable {
 
-    // 查询结果
-    private Page<Post> page;
-    // 聚合结果
-//    private Map<String, List<String>> aggregations;
-    // 自动补全结果
-    private Set<String> suggestions;
+    private Integer total;
+    private List<Post> data;
 }

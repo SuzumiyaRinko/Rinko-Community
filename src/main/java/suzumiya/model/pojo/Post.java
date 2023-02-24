@@ -27,12 +27,12 @@ public class Post implements Serializable {
     // 标题
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String title;
-    // Tag标签（最大值是2^31-1，所以可以表示31个tag，二进制从左往右读）
-    @Field(type = FieldType.Integer, index = false)
-    private Integer tags;
     // 内容（长度不能超过5000）
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
+    // Tag标签（最大值是2^31-1，所以可以表示31个tag，二进制从左往右读）
+    @Field(type = FieldType.Integer, index = false)
+    private Integer tags;
     // 是否加精 0:否 1:是
     @Field(type = FieldType.Boolean, index = false)
     private Boolean isWonderful;
@@ -73,4 +73,13 @@ public class Post implements Serializable {
     // 评论的用户的部分信息（id, nickname, avatar）
     @TableField(exist = false)
     public User postUser;
+    // 点赞数量
+    @TableField(exist = false)
+    public Integer likeCount;
+    // 评论数量
+    @TableField(exist = false)
+    public Integer commentCount;
+    // 收藏数量
+    @TableField(exist = false)
+    public Integer collectionCount;
 }

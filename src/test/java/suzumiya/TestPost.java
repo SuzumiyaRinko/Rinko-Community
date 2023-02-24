@@ -8,7 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
-import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
 
@@ -27,11 +26,14 @@ public class TestPost {
 
     @Test
     void testPostInsert() throws InterruptedException {
-        PostInsertDTO postInsertDTO = new PostInsertDTO();
-        postInsertDTO.setTitle("坤坤打飞机后的产后护理");
-        postInsertDTO.setContent("坤坤的产后护理是非常麻烦，*((!@!@$#)@_*%@!)@_");
-        postInsertDTO.setTagIDs(List.of(1, 3));
-        postService.insert(postInsertDTO);
+        for (int i = 1; i <= 50; i++) {
+            PostInsertDTO postInsertDTO = new PostInsertDTO();
+            postInsertDTO.setTitle("坤坤打飞机后的产后护理");
+            postInsertDTO.setContent("坤坤的产后护理是非常麻烦，*((!@!@$#)@_*%@!)@_");
+            postInsertDTO.setTagIDs(List.of(1, 3));
+            postService.insert(postInsertDTO);
+            Thread.sleep(200L);
+        }
     }
 
     @Test
@@ -53,10 +55,10 @@ public class TestPost {
 
     @Test
     void testPostUpdate() {
-        PostUpdateDTO postUpdateDTO = new PostUpdateDTO();
-        postUpdateDTO.setPostId(2L);
-        postUpdateDTO.setTitle("我爱坤坤我爱坤坤");
-        postService.update(postUpdateDTO);
+//        PostUpdateDTO postUpdateDTO = new PostUpdateDTO();
+//        postUpdateDTO.setPostId(2L);
+//        postUpdateDTO.setTitle("我爱坤坤我爱坤坤");
+//        postService.update(postUpdateDTO);
     }
 
     @Test

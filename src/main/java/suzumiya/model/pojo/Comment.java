@@ -33,7 +33,7 @@ public class Comment implements Serializable {
     @TableLogic
     private Boolean isDelete;
 
-    // 评论的用户的部分信息（id, nickname, avatar）
+    // 评论的用户的部分信息（id, nickname, gender, is_famous, avatar）
     @TableField(exist = false)
     public User commentUser;
     // 某个comment的前三条简单comment（userNickname, content）

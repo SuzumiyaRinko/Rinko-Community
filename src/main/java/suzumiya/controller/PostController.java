@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
-import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
@@ -33,11 +32,11 @@ public class PostController {
         return ResponseGenerator.returnOK("删除post成功", null);
     }
 
-    @PutMapping("/update")
-    public BaseResponse<Object> update(@RequestBody PostUpdateDTO postUpdateDTO) {
-        postService.update(postUpdateDTO);
-        return ResponseGenerator.returnOK("更新post成功", null);
-    }
+//    @PutMapping("/update")
+//    public BaseResponse<Object> update(@RequestBody PostUpdateDTO postUpdateDTO) {
+//        postService.update(postUpdateDTO);
+//        return ResponseGenerator.returnOK("更新post成功", null);
+//    }
 
     @GetMapping("/search")
     public BaseResponse<PostSearchVO> search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
@@ -61,6 +60,24 @@ public class PostController {
     public BaseResponse<Object> collect(@PathVariable("postId") Long postId) {
         postService.collect(postId);
         return ResponseGenerator.returnOK("收藏/取消收藏 成功", null);
+    }
+
+    @GetMapping("/hasLike/{postId}")
+    public BaseResponse<Boolean> hasLike(@PathVariable("postId") Long postId) {
+        Boolean hasLike = postService.hasLike(postId);
+        return ResponseGenerator.returnOK("查询成功", hasLike);
+    }
+
+    @GetMapping("/hasCollect/{postId}")
+    public BaseResponse<Boolean> hasCollect(@PathVariable("postId") Long postId) {
+        Boolean hasCollect = postService.hasCollect(postId);
+        return ResponseGenerator.returnOK("查询成功", hasCollect);
+    }
+
+    @GetMapping("/getCollections/{pageNum}")
+    public BaseResponse<PostSearchVO> getCollections(@PathVariable("pageNum") Integer pageNum) {
+        PostSearchVO postSearchVO = postService.getCollections(pageNum);
+        return ResponseGenerator.returnOK("查询收藏列表成功", postSearchVO);
     }
 
 //    @GetMapping("/{postId}")

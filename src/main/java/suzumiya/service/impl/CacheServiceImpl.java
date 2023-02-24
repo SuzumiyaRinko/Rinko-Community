@@ -61,18 +61,16 @@ public class CacheServiceImpl implements ICacheService {
         String keyPattern = cacheClearDTO.getKeyPattern();
         int caffeineType = cacheClearDTO.getCaffeineType();
         /* 清除Caffeine和Redis缓存 */
+        Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
         if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
-            Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
             while (cursor.hasNext()) {
                 String cacheKey = cursor.next();
                 userCache.invalidate(cacheKey);
                 redisTemplate.delete(cacheKey);
             }
         } else {
-            Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match(keyPattern).build());
             while (cursor.hasNext()) {
                 String cacheKey = cursor.next();
-
                 postCache.invalidate(cacheKey);
                 redisTemplate.delete(cacheKey);
             }
