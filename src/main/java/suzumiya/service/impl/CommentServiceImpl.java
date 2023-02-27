@@ -9,6 +9,7 @@ import com.github.pagehelper.PageInfo;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import suzumiya.constant.CommonConst;
@@ -21,6 +22,7 @@ import suzumiya.model.dto.CommentInsertDTO;
 import suzumiya.model.dto.CommentSelectDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Comment;
+import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
@@ -55,9 +57,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     private CommentMapper commentMapper;
 
     @Override
-    public void comment(CommentInsertDTO commentInsertDTO) {
+    public Long comment(CommentInsertDTO commentInsertDTO) {
         /* 判断内容长度 */
-        if (commentInsertDTO.getContent().length() > 2000) {
+        if (commentInsertDTO.getContent().length() > 1000) {
             throw new RuntimeException("内容长度超出限制");
         }
 
@@ -90,24 +92,40 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             redisTemplate.opsForSet().add(RedisConst.POST_SCORE_UPDATE_KEY, targetId);
 
             /* 发送系统消息（异步） */
-            Long userIdByPostId = Long.valueOf(commentMapper.getUserIdByCommentId(comment.getId()));
-            if (!ObjectUtil.equals(myUserId, userIdByPostId)) {
-                Long postId = commentInsertDTO.getTargetId();
-                Long toUserId = postMapper.getUserIdByPostId(postId);
+            Long postId = commentInsertDTO.getTargetId();
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+            if (!ObjectUtil.equals(myUserId, toUserId)) {
                 MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
                 messageInsertDTO.setToUserId(toUserId);
                 messageInsertDTO.setIsSystem(true);
-                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COMMENT);
-                messageInsertDTO.setPostId(postId);
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_POST_COMMENT);
+                messageInsertDTO.setTargetId(postId);
+                rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+            }
+        } else {
+            /* recomment数 +1 */
+            redisTemplate.opsForValue().increment(RedisConst.COMMENT_RECOMMENT_COUNT_KEY + targetId);
+
+            /* 发送系统消息（异步） */
+            Long commentId = comment.getId();
+            Long toUserId = commentMapper.getUserIdByCommentId(commentId);
+            if (!ObjectUtil.equals(myUserId, toUserId)) {
+                MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+                messageInsertDTO.setToUserId(toUserId);
+                messageInsertDTO.setIsSystem(true);
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_COMMENT_RECOMMENT);
+                messageInsertDTO.setTargetId(commentId);
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         }
+
+        return comment.getId();
     }
 
     @Override
     public void delete(Long commentId) {
         Integer targetType = commentMapper.getTargetTypeByCommentId(commentId);
-        Integer targetId = commentMapper.getTargetIdByCommentId(commentId);
+        Long targetId = commentMapper.getTargetIdByCommentId(commentId);
 
         /* 在MySQL把comment逻辑删除 */
         commentMapper.deleteById(commentId);
@@ -174,21 +192,69 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         PageHelper.startPage(pageNum, CommonConst.STANDARD_PAGE_SIZE);
         // 2.3 查询
         List<Comment> comments = commentMapper.selectList(queryWrapper);
-        // 2.4 获取User信息
+
         for (Comment comment : comments) {
+            // 2.4 获取User信息
             User simpleUser = userService.getSimpleUserById(comment.getUserId());
             comment.setCommentUser(simpleUser);
-        }
-        // 2.5 判断是否需要返回targetId的前3条comment
-        if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {
-            for (Comment comment : comments) {
+            if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {
+                // 2.5 返回targetId的前3条comment
                 Long id = comment.getId();
                 List<String> first3Comments = commentMapper.getFirst3CommentsByTargetId(id);
                 comment.setFirst3Comments(first3Comments);
+                // 2.6 获取并为comment设置likeCount, commentCount
+                Long commentId = comment.getId();
+                ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+                Object tmpLikeCount = valueOperations.get(RedisConst.COMMENT_LIKE_COUNT_KEY + commentId);
+                Object tmpCommentCount = valueOperations.get(RedisConst.COMMENT_RECOMMENT_COUNT_KEY + commentId);
+                int likeCount = 0;
+                int commentCount = 0;
+                if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+                if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+                comment.setLikeCount(likeCount);
+                comment.setCommentCount(commentCount);
             }
         }
 
         // 3 返回结果
+        PageInfo<Comment> pageInfo = new PageInfo<>(comments);
+        System.out.println(pageInfo.getTotal());
         return new PageInfo<>(comments);
+    }
+
+    @Override
+    public void like(Long commentId) {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.COMMENT_LIKE_LIST_KEY + commentId, myUserId))) {
+            /* 减少某个comment的点赞数 */
+            redisTemplate.opsForValue().decrement(RedisConst.COMMENT_LIKE_COUNT_KEY + commentId);
+            /* 在该comment的like列表中移除user */
+            redisTemplate.opsForSet().remove(RedisConst.COMMENT_LIKE_LIST_KEY + commentId, myUserId);
+        } else {
+            /* 增加某个comment的点赞数 */
+            redisTemplate.opsForValue().increment(RedisConst.COMMENT_LIKE_COUNT_KEY + commentId);
+            /* 在该comment的like列表中新增user */
+            redisTemplate.opsForSet().add(RedisConst.COMMENT_LIKE_LIST_KEY + commentId, myUserId);
+            /* 发送系统消息（异步） */
+            Long toUserId = commentMapper.getUserIdByCommentId(commentId);
+            if (!ObjectUtil.equals(myUserId, toUserId)) {
+                MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+                messageInsertDTO.setToUserId(toUserId);
+                messageInsertDTO.setEventUserId(myUserId);
+                messageInsertDTO.setIsSystem(true);
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_COMMENT_LIKE);
+                messageInsertDTO.setTargetId(commentId);
+                rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
+            }
+        }
+    }
+
+    @Override
+    public Boolean hasLike(Long postId) {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+        return redisTemplate.opsForSet().isMember(RedisConst.COMMENT_LIKE_LIST_KEY + postId, myUserId);
     }
 }

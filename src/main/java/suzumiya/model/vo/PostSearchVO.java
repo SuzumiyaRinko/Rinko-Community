@@ -1,14 +1,17 @@
 package suzumiya.model.vo;
 
 import lombok.Data;
-import suzumiya.model.pojo.Post;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Collection;
 
 @Data
 public class PostSearchVO implements Serializable {
 
     private Integer total;
-    private List<Post> data;
+    /*
+        如果查post, 返回 List<Post>
+        如果联想查询, 返回 Set<String>
+     */
+    private Collection data;
 }

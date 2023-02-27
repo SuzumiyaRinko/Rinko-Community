@@ -12,7 +12,7 @@ import java.util.Set;
 public interface IPostService extends IService<Post> {
 
     /* 新增 */
-    void insert(PostInsertDTO postInsertDTO);
+    Long insert(PostInsertDTO postInsertDTO);
 
     /* 删除 */
     void delete(Long postId);

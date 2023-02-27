@@ -17,7 +17,6 @@ import java.util.List;
 
 @SpringBootApplication
 @MapperScan(basePackages = "suzumiya.mapper")
-//@EnableElasticsearchRepositories(basePackages = "suzumiya.repository")
 @EnableAspectJAutoProxy(exposeProxy = true)
 public class Application {
 

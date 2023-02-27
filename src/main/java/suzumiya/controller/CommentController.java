@@ -18,9 +18,9 @@ public class CommentController {
     private ICommentService commentService;
 
     @PostMapping
-    public BaseResponse<Object> comment(@RequestBody CommentInsertDTO commentInsertDTO) {
-        commentService.comment(commentInsertDTO);
-        return ResponseGenerator.returnOK("评论成功", null);
+    public BaseResponse<Long> comment(@RequestBody CommentInsertDTO commentInsertDTO) {
+        Long commentId = commentService.comment(commentInsertDTO);
+        return ResponseGenerator.returnOK("评论成功", commentId);
     }
 
     @DeleteMapping("/delete/{commentId}")
@@ -33,5 +33,17 @@ public class CommentController {
     public BaseResponse<PageInfo<Comment>> select(CommentSelectDTO commentSelectDTO) {
         PageInfo<Comment> pageInfo = commentService.select(commentSelectDTO);
         return ResponseGenerator.returnOK("查询评论成功", pageInfo);
+    }
+
+    @PostMapping("/like/{commentId}")
+    public BaseResponse<Object> like(@PathVariable("commentId") Long commentId) {
+        commentService.like(commentId);
+        return ResponseGenerator.returnOK("点赞/取消点赞 成功", null);
+    }
+
+    @GetMapping("/hasLike/{commentId}")
+    public BaseResponse<Boolean> hasLike(@PathVariable("commentId") Long commentId) {
+        Boolean hasLike = commentService.hasLike(commentId);
+        return ResponseGenerator.returnOK("查询成功", hasLike);
     }
 }

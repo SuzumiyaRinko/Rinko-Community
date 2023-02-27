@@ -1,14 +1,13 @@
 package suzumiya;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import suzumiya.util.IKAnalyzerUtils;
+
 import java.util.List;
 
 public class TestMain {
 
     public static void main(String[] args) {
-        ArrayList<Integer> nums = new ArrayList<>(List.of(1, 2, 3));
-        Collections.reverse(nums);
-        System.out.println(nums);
+        List<String> split = IKAnalyzerUtils.parse("产后护理");
+        System.out.println(split);
     }
 }

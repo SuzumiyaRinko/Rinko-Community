@@ -1,5 +1,6 @@
 package suzumiya;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -8,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.service.IUserService;
+
+import javax.annotation.Resource;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -18,6 +21,9 @@ public class TestUser {
 
     @Autowired
     private IUserService userService;
+
+    @Resource(name = "userCache")
+    private Cache<String, Object> userCache; // Caffeine
 
     @Test
     void testGetFollowings() {
@@ -33,10 +39,12 @@ public class TestUser {
     }
 
     @Test
-    void testFollow() {
-        userService.follow(2L);
-        while (true) {
-
-        }
+    void testUserCache() {
+        userService.getSimpleUserById(3L);
+        userService.getSimpleUserById(3L);
+        userService.getSimpleUserById(3L);
+        userService.getSimpleUserById(3L);
+        userService.getSimpleUserById(3L);
+        userService.getSimpleUserById(3L);
     }
 }

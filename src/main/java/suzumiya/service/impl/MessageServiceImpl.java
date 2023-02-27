@@ -56,7 +56,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     @Override
     public void saveMessage(MessageInsertDTO messageInsertDTO) {
         /* 判断内容长度 */
-        if (!messageInsertDTO.getIsSystem() && messageInsertDTO.getContent().length() > 2000) {
+        if (!messageInsertDTO.getIsSystem() && messageInsertDTO.getContent().length() > 1000) {
             throw new RuntimeException("内容长度超出限制");
         }
 
@@ -68,25 +68,42 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         message.setToUserId(toUserId);
 
         if (messageInsertDTO.getIsSystem()) {
+            /* 发送系统消息 */
             message.setFromUserId(0L);
-            User eventUser = userService.getSimpleUserById(messageInsertDTO.getEventUserId());
-            String title = postMapper.getTitleByPostId(messageInsertDTO.getPostId());
+            Long targetId = messageInsertDTO.getTargetId();
+            Long eventUserId = messageInsertDTO.getEventUserId();
             int systemMsgType = messageInsertDTO.getSystemMsgType();
-            // 3种系统消息
-            if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_LIKE) {
-                message.setPostId(messageInsertDTO.getPostId());
+
+            // 判断是否已经发送过这种类型的系统消息
+            if (systemMsgType != Message.SYSTEM_TYPE_POST_COMMENT && messageMapper.exists(new LambdaQueryWrapper<Message>()
+                    .eq(Message::getTargetId, targetId)
+                    .eq(Message::getSystemMsgType, systemMsgType)
+                    .eq(Message::getEventUserId, eventUserId)
+            )) {
+                return;
+            }
+
+            message.setSystemMsgType(systemMsgType);
+            User eventUser = userService.getSimpleUserById(eventUserId);
+            message.setTargetId(targetId);
+            message.setEventUserId(eventUserId);
+
+            // 6种系统消息
+            if (systemMsgType == Message.SYSTEM_TYPE_POST_LIKE) {
+                String title = postMapper.getTitleByPostId(targetId);
                 message.setContent(eventUser.getNickname() + " 给你的帖子 \"" + title + "\" 点了个赞");
-            } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_COLLECT) {
-                message.setPostId(messageInsertDTO.getPostId());
+            } else if (systemMsgType == Message.SYSTEM_TYPE_POST_COLLECT) {
+                String title = postMapper.getTitleByPostId(targetId);
                 message.setContent(eventUser.getNickname() + " 收藏了你的帖子 \"" + title + "\"");
-            } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_COMMENT) {
-                message.setPostId(messageInsertDTO.getPostId());
-                message.setContent(eventUser.getNickname() + " 评论了你的帖子");
-            } else if (systemMsgType == MessageInsertDTO.SYSTEM_TYPE_FOLLOWING_POST) {
-                message.setPostId(messageInsertDTO.getPostId());
+            } else if (systemMsgType == Message.SYSTEM_TYPE_POST_COMMENT) {
+                String title = postMapper.getTitleByPostId(targetId);
+                message.setContent(eventUser.getNickname() + " 评论了你的帖子 \"" + title + "\"");
+            } else if (systemMsgType == Message.SYSTEM_TYPE_POST_FOLLOWING) {
+                String title = postMapper.getTitleByPostId(targetId);
                 message.setContent("你关注的po主 \"" + eventUser.getNickname() + "\" 发布了一个帖子 \"" + title + "\"");
             }
         } else {
+            /* 发送私聊消息 */
             message.setFromUserId(messageInsertDTO.getFromUserId());
             message.setContent(messageInsertDTO.getContent());
             /* 更新双方用户的私信列表 */

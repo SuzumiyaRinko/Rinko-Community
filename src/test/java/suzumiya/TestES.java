@@ -10,7 +10,6 @@ import suzumiya.repository.PostRepository;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @MapperScan(basePackages = "suzumiya.mapper")
-//@EnableElasticsearchRepositories(basePackages = "suzumiya.repository")
 @Slf4j
 @EnableAspectJAutoProxy(exposeProxy = true)
 public class TestES {

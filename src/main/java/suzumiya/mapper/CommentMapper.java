@@ -18,11 +18,17 @@ public interface CommentMapper extends BaseMapper<Comment> {
     Integer getTargetTypeByCommentId(@Param("commentId") Long commentId);
 
     @Select("SELECT target_id FROM tb_comment WHERE id = #{commentId}")
-    Integer getTargetIdByCommentId(@Param("commentId") Long commentId);
+    Long getTargetIdByCommentId(@Param("commentId") Long commentId);
 
     @Select("SELECT user_id FROM tb_comment WHERE id = #{commentId}")
-    Integer getUserIdByCommentId(@Param("commentId") Long commentId);
+    Long getUserIdByCommentId(@Param("commentId") Long commentId);
 
     @Delete("UPDATE tb_comment SET is_delete = 1 WHERE target_type = #{targetType} AND target_id = #{targetId}")
     void deleteCommentByTargetTypeAndTargetId(@Param("targetType") Integer targetType, @Param("targetId") Long targetId);
+
+    @Select("SELECT id FROM tb_comment WHERE target_type = 1 AND target_id = #{postId} AND is_delete = 0")
+    List<Long> getAllCommentIdByPostId(@Param("postId") Long postId);
+
+    @Select("SELECT id FROM tb_comment WHERE target_type = 2 AND target_id = #{commentId} AND is_delete = 0")
+    List<Long> getAllRecommentIdByCommentId(@Param("commentId") Long commentId);
 }

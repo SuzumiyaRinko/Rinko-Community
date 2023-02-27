@@ -39,4 +39,10 @@ public class Comment implements Serializable {
     // 某个comment的前三条简单comment（userNickname, content）
     @TableField(exist = false)
     public List<String> first3Comments;
+    // 点赞数量
+    @TableField(exist = false)
+    public Integer likeCount;
+    // 评论数量
+    @TableField(exist = false)
+    public Integer commentCount;
 }

@@ -8,6 +8,7 @@ import cn.hutool.jwt.JWTUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -48,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService, UserDetailsService {
 
     @Autowired
@@ -330,7 +332,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         UserInfoVo userInfoVo = new UserInfoVo();
         // SimpleUser数据
-        User simpleUser = userMapper.getSimpleUserById(userId);
+        User simpleUser = this.getSimpleUserById(userId);
         userInfoVo.setId(simpleUser.getId());
         userInfoVo.setNickname(simpleUser.getNickname());
         userInfoVo.setGender(simpleUser.getGender());

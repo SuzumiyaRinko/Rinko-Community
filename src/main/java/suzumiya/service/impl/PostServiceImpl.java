@@ -1,5 +1,6 @@
 package suzumiya.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
@@ -35,6 +36,7 @@ import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.*;
+import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.PostSearchVO;
@@ -88,10 +90,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 //    private final String[] aggsResultNames = {"标签"};
 
     @Override
-    public void insert(PostInsertDTO postInsertDTO) {
+    public Long insert(PostInsertDTO postInsertDTO) {
         /* 判断标题和内容长度 */
         String title = postInsertDTO.getTitle();
-        if (title.length() < 5 || title.length() > 40 || postInsertDTO.getContent().length() > 5000) {
+        if (title.length() < 5 || title.length() > 39 || postInsertDTO.getContent().length() > 2000) {
             throw new RuntimeException("标题或内容长度不符合要求");
         }
 
@@ -152,11 +154,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 messageInsertDTO.setToUserId(followerId);
                 messageInsertDTO.setEventUserId(myId);
                 messageInsertDTO.setIsSystem(true);
-                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_FOLLOWING_POST);
-                messageInsertDTO.setPostId(post.getId());
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_POST_FOLLOWING);
+                messageInsertDTO.setTargetId(post.getId());
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         }
+
+        return post.getId();
     }
 
     @Override
@@ -182,14 +186,17 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* post -1 */
         redisTemplate.opsForValue().decrement(RedisConst.POST_TOTAL_KEY);
 
-        /* 清除post缓存（异步） */
+        /* 异步 */
+        /* 清除post缓存 */
         CacheClearDTO cacheClearDTO = new CacheClearDTO();
         cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+
+        /* 删除相关comment */
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
     }
 
-    //TODO 删掉这段
 //    public void update(PostUpdateDTO postUpdateDTO) {
 //        /* 判断标题和内容长度 */
 //        String title = postUpdateDTO.getTitle();
@@ -247,10 +254,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
-        List<Post> posts = new ArrayList<>();
+        PostSearchVO postSearchVO = new PostSearchVO();
 
         String searchKey = postSearchDTO.getSearchKey();
-        long userId = postSearchDTO.getUserId();
+        Long userId = postSearchDTO.getUserId();
         int sortType = postSearchDTO.getSortType();
         int pageNum = postSearchDTO.getPageNum();
 
@@ -267,10 +274,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 判断isCache和cacheKey */
         // 只缓存默认排序时的查询结果，且不缓存用户结果
         if (sortType == 1) {
-            if (StrUtil.isBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
+            if (StrUtil.isBlank(searchKey) && userId != null && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
                 isCache = true;
                 cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum; // 查个人post时，按照时间降序查
-            } else if (StrUtil.isBlank(searchKey) && userId <= 0) {
+            } else if (StrUtil.isBlank(searchKey) && (userId == null || userId < 0)) {
                 isCache = true;
                 cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
             }
@@ -287,9 +294,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 //            }
 
             // Redis
-            Object t = redisTemplate.opsForValue().get(cacheKey);
-            if (t != null) {
-                posts = ((List<Post>) t);
+            Map<Object, Object> t = redisTemplate.opsForHash().entries(cacheKey);
+            if (ObjectUtil.isNotEmpty(t)) {
+                postSearchVO.setTotal((Integer) t.get("total"));
+                Collection<Post> collect = (Collection<Post>) ((Collection) t.get("data")).stream().map((postMap) -> {
+                    Post post = new Post();
+                    BeanUtil.fillBeanWithMap((Map<?, ?>) postMap, post, null);
+                    return post;
+                }).collect(Collectors.toList());
+                postSearchVO.setData(collect);
                 flag = true;
             }
         }
@@ -301,7 +314,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             // 查询结果
             SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
             // 解析结果
-            posts = (List<Post>) parseSearchHits(postSearchDTO, searchHits);
+            postSearchVO = parseSearchHits(postSearchDTO, searchHits);
         }
 
         /* 判断是否需要缓存该List<Post>对象（异步） */
@@ -310,12 +323,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
             cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
             cacheUpdateDTO.setKey(cacheKey);
-            cacheUpdateDTO.setValue(posts);
+            cacheUpdateDTO.setValue(postSearchVO);
             cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
             cacheUpdateDTO.setDuration(Duration.ofMinutes(30L));
             rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         }
 
+        List<Post> posts = (List<Post>) postSearchVO.getData();
         for (Post post : posts) {
             /* 获取并为post设置SimpleUser */
             Long postUserId = post.getUserId();
@@ -339,116 +353,16 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             post.setCollectionCount(collectionCount);
         }
 
-        /* 收集并返回结果 */
-        PostSearchVO postSearchVO = new PostSearchVO();
-        postSearchVO.setData(posts);
-        Object total = redisTemplate.opsForValue().get(RedisConst.POST_TOTAL_KEY);
-        if (total != null) {
-            postSearchVO.setTotal((Integer) total);
-        } else {
-            postSearchVO.setTotal(0);
-        }
+        /* 返回结果 */
         return postSearchVO;
     }
 
-    //TODO 删掉这段
-    //TODO 删掉这段
-//    public PostSearchVO testSearch(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
-//        PostSearchVO postSearchVO = new PostSearchVO();
-//
-//        String searchKey = postSearchDTO.getSearchKey();
-//        long userId = postSearchDTO.getUserId();
-//        int sortType = postSearchDTO.getSortType();
-//        int pageNum = postSearchDTO.getPageNum();
-//
-//        /* 判断isSearchMyself */
-//        if (postSearchDTO.getIsSearchMyself()) {
-//            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//            userId = user.getId();
-//        }
-//
-//        String cacheKey = null;
-//        boolean isCache = false;
-//        boolean flag = false;
-//
-//        /* 判断isCache和cacheKey */
-//        if (StrUtil.isBlank(searchKey) && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
-//            isCache = true;
-//            cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum; // 查个人post时，按照时间降序查
-//        } else if (StrUtil.isBlank(searchKey) && userId <= 0) {
-//            isCache = true;
-//            cacheKey = CacheConst.CACHE_POST_NOT_FAMOUS_KEY + sortType + ":" + pageNum;
-//        }
-//
-//        if (isCache) {
-//            /* 查缓存 */
-//            // Caffeine
-//            //TODO 这里不应该被注释
-////            Object t = postCache.getIfPresent(cacheKey);
-////            if (t != null) {
-////                BeanUtil.fillBeanWithMap((LinkedHashMap) t, postSearchVO, null);
-////                flag = true;
-////            }
-//
-//            // Redis
-//            Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
-//            if (ObjectUtil.isNotEmpty(entries)) {
-//                BeanUtil.fillBeanWithMap(entries, postSearchVO, null);
-//                flag = true;
-//            }
-//        }
-//
-//        if (!isCache || !flag) {
-//            /* 查询ES */
-//            // 根据HotelSearchDTO生成SearchQuery对象
-//            NativeSearchQuery searchQuery = getSearchQuery(postSearchDTO);
-//            // 查询结果
-//            SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
-//            // 解析结果
-//            postSearchVO = parseSearchHits(postSearchDTO, searchHits);
-//        }
-//
-//        List<Post> posts = postSearchVO.getPage().getData();
-//        for (Post post : posts) {
-//            /* 获取并为post设置SimpleUser */
-//            Long postUserId = post.getUserId();
-//            User simpleUser = userMapper.getSimpleUserById(postUserId);
-//            post.setPostUser(simpleUser);
-//
-//            /* 获取并为post设置likeCount, commentCount, collectionCount */
-//            Long postId = post.getId();
-//            ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
-//            Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
-//            Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
-//            Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
-//            int likeCount = 0;
-//            int commentCount = 0;
-//            int collectionCount = 0;
-//            if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
-//            if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
-//            if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
-//            post.setLikeCount(likeCount);
-//            post.setCommentCount(commentCount);
-//            post.setCollectionCount(collectionCount);
-//        }
-//
-//        /* 判断是否需要缓存该postSearchVO对象 */
-//        if (isCache) {
-//            /* 构建或刷新Caffeine和Redis缓存（异步） */
-//            CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
-//            cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
-//            cacheUpdateDTO.setKey(cacheKey);
-//            cacheUpdateDTO.setValue(postSearchVO);
-//            cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-//            cacheUpdateDTO.setDuration(Duration.ofMinutes(30L));
-//            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
-//        }
-//
-//        return postSearchVO;
-//    }
-
     @Override
     public Set<String> suggest(String searchKey) throws NoSuchFieldException, IllegalAccessException {
+        if (StrUtil.isBlank(searchKey)) {
+            throw new RuntimeException("搜索栏不能为空");
+        }
+
         PostSearchDTO postSearchDTO = new PostSearchDTO();
         postSearchDTO.setSearchKey(searchKey);
         postSearchDTO.setIsSuggestion(true);
@@ -458,7 +372,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         // 查询结果
         SearchHits<Post> searchHits = esTemplate.search(searchQuery, Post.class);
         // 解析结果
-        return (Set<String>) parseSearchHits(postSearchDTO, searchHits);
+        return (Set<String>) (parseSearchHits(postSearchDTO, searchHits).getData());
     }
 
     /* 生成SearchQuery对象 */
@@ -490,8 +404,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             }
         }
         // 根据userId查询post
-        long userId = postSearchDTO.getUserId();
-        if (userId > 0) {
+        Long userId = postSearchDTO.getUserId();
+        if (userId != null) {
             boolQuery.filter(QueryBuilders.matchQuery("userId", userId));
         }
 
@@ -537,9 +451,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     /* 解析结果 */
-    // 如果查post, 返回 List<Post>
-    // 如果联想查询, 返回 Set<String>
-    private Collection parseSearchHits(PostSearchDTO postSearchDTO, SearchHits<Post> searchHits) throws NoSuchFieldException, IllegalAccessException {
+    private PostSearchVO parseSearchHits(PostSearchDTO postSearchDTO, SearchHits<Post> searchHits) throws NoSuchFieldException, IllegalAccessException {
+        PostSearchVO postSearchVO = new PostSearchVO();
+
         /* 联想搜索 */
         if (Boolean.TRUE.equals(postSearchDTO.getIsSuggestion())) {
             List<String> parseList = IKAnalyzerUtils.parse(postSearchDTO.getSearchKey());
@@ -556,7 +470,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 // 3 添加到suggestions
                 suggestions.add(title);
             }
-            return suggestions;
+            postSearchVO.setData(suggestions);
+            return postSearchVO;
         }
 
         /* 解析查询结果 */
@@ -591,7 +506,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             postsResult.add(post);
         }
 
-        return postsResult;
+        postSearchVO.setTotal(total);
+        postSearchVO.setData(postsResult);
+        return postSearchVO;
     }
 
     @Override
@@ -612,15 +529,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             /* 在该post的like列表中增加user */
             redisTemplate.opsForSet().add(RedisConst.POST_LIKE_LIST_KEY + postId, myId);
             /* 发送系统消息（异步） */
-            Long userIdByPostId = postMapper.getUserIdByPostId(postId);
-            if (!ObjectUtil.equals(myId, userIdByPostId)) {
-                Long toUserId = postMapper.getUserIdByPostId(postId);
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+            // 给自己点赞不发送消息
+            if (!ObjectUtil.equals(myId, toUserId)) {
                 MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
                 messageInsertDTO.setToUserId(toUserId);
                 messageInsertDTO.setEventUserId(myId);
                 messageInsertDTO.setIsSystem(true);
-                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_LIKE);
-                messageInsertDTO.setPostId(postId);
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_POST_LIKE);
+                messageInsertDTO.setTargetId(postId);
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         }
@@ -636,24 +553,27 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (redisTemplate.opsForZSet().score(RedisConst.USER_COLLECTIONS_KEY + myId, postId) != null) {
             /* 减少某个post的收藏数 */
             redisTemplate.opsForValue().decrement(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+            /* 在该post的collection列表中移除user */
+            redisTemplate.opsForSet().remove(RedisConst.POST_COLLECTION_LIST_KEY + postId, myId);
             /* 在该user的collection列表中移除post */
             redisTemplate.opsForZSet().remove(RedisConst.USER_COLLECTIONS_KEY + myId, postId);
         } else {
             /* 增加某个post的收藏数 */
             redisTemplate.opsForValue().increment(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+            /* 在该post的collection列表中添加user */
+            redisTemplate.opsForSet().add(RedisConst.POST_COLLECTION_LIST_KEY + postId, myId);
             /* 在该user的collection列表中增加post */
             redisTemplate.opsForZSet().add(RedisConst.USER_COLLECTIONS_KEY + myId, postId, RedisUtils.getZSetScoreBy2EpochSecond(LocalDateTime.now()));
             /* 发送系统消息（异步） */
-            Long userIdByPostId = postMapper.getUserIdByPostId(postId);
-            if (!ObjectUtil.equals(myId, userIdByPostId)) {
-                Long toUserId = postMapper.getUserIdByPostId(postId);
+            Long toUserId = postMapper.getUserIdByPostId(postId);
+            if (!ObjectUtil.equals(myId, toUserId)) {
                 MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
                 messageInsertDTO.setMyId(myId);
                 messageInsertDTO.setToUserId(toUserId);
                 messageInsertDTO.setEventUserId(myId);
                 messageInsertDTO.setIsSystem(true);
-                messageInsertDTO.setSystemMsgType(MessageInsertDTO.SYSTEM_TYPE_COLLECT);
-                messageInsertDTO.setPostId(postId);
+                messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_POST_COLLECT);
+                messageInsertDTO.setTargetId(postId);
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         }

@@ -21,9 +21,9 @@ public class PostController {
     @GetMapping
 
     @PostMapping("/insert")
-    public BaseResponse<Object> insert(@RequestBody PostInsertDTO postInsertDTO) {
-        postService.insert(postInsertDTO);
-        return ResponseGenerator.returnOK("新增post成功", null);
+    public BaseResponse<Long> insert(@RequestBody PostInsertDTO postInsertDTO) {
+        Long postId = postService.insert(postInsertDTO);
+        return ResponseGenerator.returnOK("新增post成功", postId);
     }
 
     @DeleteMapping("/delete/{postId}")

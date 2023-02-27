@@ -39,4 +39,12 @@ public class RedisConst {
     public static final String POST_COLLECTION_COUNT_KEY = "post:collection:count:"; // post:collection:count:{postId}
     // 某个post的collection用户的set集合
     public static final String POST_COLLECTION_LIST_KEY = "post:collection:list:"; // post:collection:list:{postId}
+
+    /* Comment */
+    // 某个comment的like数
+    public static final String COMMENT_LIKE_COUNT_KEY = "comment:like:count:"; // comment:like:count:{commentId}
+    // 某个comment的like用户的set集合
+    public static final String COMMENT_LIKE_LIST_KEY = "comment:like:list:"; // comment:like:list:{commentId}
+    // 某个comment的recomment数
+    public static final String COMMENT_RECOMMENT_COUNT_KEY = "comment:recomment:count:"; // comment:recomment:count:{commentId}
 }

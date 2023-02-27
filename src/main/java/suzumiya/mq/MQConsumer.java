@@ -1,5 +1,6 @@
 package suzumiya.mq;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -13,6 +14,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
+import suzumiya.mapper.CommentMapper;
+import suzumiya.mapper.MessageMapper;
 import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.MessageInsertDTO;
@@ -25,7 +28,9 @@ import suzumiya.util.MailUtils;
 import javax.annotation.Resource;
 import javax.mail.MessagingException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Configuration
 @Slf4j
@@ -36,6 +41,12 @@ public class MQConsumer {
 
     @Autowired
     private IMessageService messageService;
+
+    @Autowired
+    private CommentMapper commentMapper;
+
+    @Autowired
+    private MessageMapper messageMapper;
 
     @Resource(name = "userCache")
     private Cache<String, Object> userCache; // Caffeine
@@ -104,6 +115,39 @@ public class MQConsumer {
     public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) {
         /* 发送消息 */
         messageService.saveMessage(messageInsertDTO);
+    }
+
+    /* 监听Post删除接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.POST_DELETE_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.POST_DELETE_KEY}
+    ))
+    public void listenPostDeleteQueue(Long postId) {
+        /* 删除所有comment以及其相关recomment */
+        List<Long> commentIDs = commentMapper.getAllCommentIdByPostId(postId);
+        for (Long commentID : commentIDs) {
+            List<Long> recommentIDs = commentMapper.getAllRecommentIdByCommentId(commentID);
+            if (ObjectUtil.isNotEmpty(recommentIDs)) {
+                commentMapper.deleteBatchIds(recommentIDs);
+            }
+        }
+        if (ObjectUtil.isNotEmpty(commentIDs)) {
+            commentMapper.deleteBatchIds(commentIDs);
+        }
+
+        /* 删除该post的like相关数据 */
+        redisTemplate.delete(RedisConst.POST_LIKE_LIST_KEY + postId);
+        redisTemplate.delete(RedisConst.POST_LIKE_COUNT_KEY + postId);
+
+        /* 删除该post的collection相关数据 */
+        Set<Object> t = redisTemplate.opsForSet().members(RedisConst.POST_COLLECTION_LIST_KEY + postId);
+        List<Integer> userIDs = t.stream().map((el) -> (Integer) el).collect(Collectors.toList());
+        for (Integer userID : userIDs) {
+            redisTemplate.opsForZSet().remove(RedisConst.USER_COLLECTIONS_KEY + userID, postId);
+        }
+        redisTemplate.delete(RedisConst.POST_COLLECTION_LIST_KEY + postId);
+        redisTemplate.delete(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
     }
 
     // DelayQueue：监听用户激活时间是否结束
