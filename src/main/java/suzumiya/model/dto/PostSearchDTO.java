@@ -8,8 +8,9 @@ import java.io.Serializable;
 public class PostSearchDTO implements Serializable {
 
     private String searchKey; // 正常查询的时候，会用searchKey来查
-    private Boolean isSuggestion; // 联想搜索
-    private Boolean isSearchMyself; // 是否查询自己的post
+    private Boolean isSuggestion = false; // 联想搜索
+    private Boolean isSearchMyself = false; // 是否查询自己的post
+    private Boolean isAllSearch = false; // 是否从第一页一直查到pageNum
     private Long userId; // 点击别人主页的时候，会用userId来查
     private int[] tagIDs; // 每个搜索结果都要带有这些tagID
     private int sortType = 1; // 1:按综合排序（热度+时间） 2:按热度排 3:按时间排

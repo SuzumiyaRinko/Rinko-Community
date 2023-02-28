@@ -118,12 +118,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             }
         }
         post.setTags(tags);
-        // 新增post到MySQL
 
-        //TODO 这两行代码不应该被注释掉
-//        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-//        Long myId = user.getId();
-        Long myId = 3L; // 这行代码应该被注释掉
+        // 新增post到MySQL
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myId = user.getId();
         post.setUserId(myId);
 
         post.setCreateTime(LocalDateTime.now());
@@ -264,7 +262,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 判断isSearchMyself */
         if (postSearchDTO.getIsSearchMyself()) {
             User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            userId = user.getId();
+            postSearchDTO.setUserId(user.getId());
         }
 
         String cacheKey = null;
@@ -680,4 +678,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
         cacheService.clearCache(cacheClearDTO);
     }
+
+
 }

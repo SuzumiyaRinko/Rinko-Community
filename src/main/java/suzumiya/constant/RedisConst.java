@@ -47,4 +47,12 @@ public class RedisConst {
     public static final String COMMENT_LIKE_LIST_KEY = "comment:like:list:"; // comment:like:list:{commentId}
     // 某个comment的recomment数
     public static final String COMMENT_RECOMMENT_COUNT_KEY = "comment:recomment:count:"; // comment:recomment:count:{commentId}
+
+    /* History */
+    /*
+        某个用户某个post的历史列表
+        history:{userId}:{targetType} → now()-epoch, targetId
+        history:{userId}:{targetType}:{targetId} → History
+    */
+    public static final String HISTORY_KEY = "history:";
 }
