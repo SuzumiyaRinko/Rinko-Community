@@ -35,6 +35,7 @@ public class Message implements Serializable {
     public static final int SYSTEM_TYPE_POST_FOLLOWING = 4; // 自己发post，然后通知关注自己的用户
     public static final int SYSTEM_TYPE_COMMENT_LIKE = 5; // 有人点赞自己的comment
     public static final int SYSTEM_TYPE_COMMENT_RECOMMENT = 6; // 有人评论自己的comment
+    public static final int SYSTEM_TYPE_SOMEONE_FOLLOWING = 7; // 有人关注自己
     // 触发事件的人
     private Long eventUserId;
 

@@ -20,6 +20,9 @@ public interface PostMapper extends BaseMapper<Post> {
     @Select("SELECT title FROM tb_post WHERE id = #{postId}")
     String getTitleByPostId(@Param("postId") Long postId);
 
+    @Select("SELECT pictures FROM tb_post WHERE id = #{postId}")
+    String getPicturesByPostId(@Param("postId") Long postId);
+
     @Select("SELECT id FROM tb_post WHERE user_id = #{userId} LIMIT #{startIndex}, #{size}")
     List<Long> getPostIdsByUserId(@Param("postId") Long postId, @Param("startIndex") int startIndex, @Param("size") int size);
 

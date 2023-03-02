@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
+import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.PostSearchVO;
 import suzumiya.service.IPostService;
@@ -17,8 +18,6 @@ public class PostController {
 
     @Autowired
     private IPostService postService;
-
-    @GetMapping
 
     @PostMapping("/insert")
     public BaseResponse<Long> insert(@RequestBody PostInsertDTO postInsertDTO) {
@@ -74,10 +73,22 @@ public class PostController {
         return ResponseGenerator.returnOK("查询成功", hasCollect);
     }
 
-    @GetMapping("/getCollections/{pageNum}")
+    @GetMapping("/collections/{pageNum}")
     public BaseResponse<PostSearchVO> getCollections(@PathVariable("pageNum") Integer pageNum) {
         PostSearchVO postSearchVO = postService.getCollections(pageNum);
         return ResponseGenerator.returnOK("查询收藏列表成功", postSearchVO);
+    }
+
+    @GetMapping("/feeds/{pageNum}")
+    public BaseResponse<PostSearchVO> getFeeds(@PathVariable("pageNum") Integer pageNum) {
+        PostSearchVO postSearchVO = postService.getFeeds(pageNum);
+        return ResponseGenerator.returnOK("查询收藏列表成功", postSearchVO);
+    }
+
+    @GetMapping("/getPostByCommentId/{commentId}")
+    public BaseResponse<Post> getPostByCommentId(@PathVariable("commentId") Long commentId) {
+        Post post = postService.getPostByCommentId(commentId);
+        return ResponseGenerator.returnOK("post成功", post);
     }
 
 //    @GetMapping("/{postId}")

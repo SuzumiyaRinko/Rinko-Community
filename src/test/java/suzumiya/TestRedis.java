@@ -98,18 +98,8 @@ public class TestRedis {
     }
 
     @Test
-    void testnmb() {
-//        PostSearchVO postSearchVO = new PostSearchVO();
-//
-//        Map<Object, Object> t = redisTemplate.opsForHash().entries("cache:post:0:1:1");
-//        postSearchVO.setTotal((Integer) t.get("total"));
-//        Collection<Post> collect = (Collection<Post>) ((Collection)t.get("data")).stream().map((postMap) -> {
-//            Post post = new Post();
-//            BeanUtil.fillBeanWithMap((Map<?, ?>) postMap, post, null);
-//            return post;
-//        }).collect(Collectors.toList());
-//        postSearchVO.setData(collect);
-//
-//        System.out.println(postSearchVO);
+    void testHasFollow() {
+        Boolean result = redisTemplate.opsForSet().isMember("juejueSet", 1L);
+        System.out.println("result: " + result);
     }
 }

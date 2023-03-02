@@ -101,6 +101,14 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             } else if (systemMsgType == Message.SYSTEM_TYPE_POST_FOLLOWING) {
                 String title = postMapper.getTitleByPostId(targetId);
                 message.setContent("你关注的po主 \"" + eventUser.getNickname() + "\" 发布了一个帖子 \"" + title + "\"");
+            } else if (systemMsgType == Message.SYSTEM_TYPE_COMMENT_LIKE) {
+                String content = commentMapper.getContentByCommentId(targetId);
+                message.setContent(eventUser.getNickname() + " 点赞了你的评论 \"" + content + "\"");
+            } else if (systemMsgType == Message.SYSTEM_TYPE_COMMENT_RECOMMENT) {
+                String content = commentMapper.getContentByCommentId(targetId);
+                message.setContent(eventUser.getNickname() + " 评论了你的评论 \"" + content + "\"");
+            } else if (systemMsgType == Message.SYSTEM_TYPE_SOMEONE_FOLLOWING) {
+                message.setContent(eventUser.getNickname() + " 关注了你");
             }
         } else {
             /* 发送私聊消息 */
@@ -159,7 +167,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                     Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myId);
                     if (firstMessage != null) {
                         // 获取对方SimpleUser数据
-                        firstMessage.setFromUser(userMapper.getSimpleUserById(fromUserId));
+                        firstMessage.setFromUser(userService.getSimpleUserById(fromUserId));
                     }
                     messages.add(firstMessage);
                 }

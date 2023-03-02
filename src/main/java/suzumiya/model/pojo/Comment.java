@@ -3,6 +3,8 @@ package suzumiya.model.pojo;
 import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -23,6 +25,9 @@ public class Comment implements Serializable {
     private Long targetId;
     // 内容（长度不超过2000）
     private String content;
+    // 图片
+    @Field(type = FieldType.Text, index = false)
+    private String pictures;
     // 创建时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime createTime;
@@ -45,4 +50,8 @@ public class Comment implements Serializable {
     // 评论数量
     @TableField(exist = false)
     public Integer commentCount;
+
+    // 图片
+    @TableField(exist = false)
+    public String[] picturesSplit;
 }

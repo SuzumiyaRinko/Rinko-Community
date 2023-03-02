@@ -59,12 +59,14 @@ public class UserController {
     @PostMapping("/follow/{targetId}")
     public BaseResponse<Object> follow(@PathVariable("targetId") Long targetId) {
         /* 关注 / 取消关注 */
-        int result = userService.follow(targetId);
-        if (result == IUserService.FOLLOW_SUCCESS) {
-            return ResponseGenerator.returnOK("已关注该用户", null);
-        } else {
-            return ResponseGenerator.returnOK("已取消关注该用户", null);
-        }
+        userService.follow(targetId);
+        return ResponseGenerator.returnOK("关注/取消关注 成功", null);
+    }
+
+    @GetMapping("/hasFollow/{targetId}")
+    public BaseResponse<Boolean> hasFollow(@PathVariable("targetId") Long targetId) {
+        Boolean result = userService.hasFollow(targetId);
+        return ResponseGenerator.returnOK("查询成功", result);
     }
 
     @GetMapping("/following")
@@ -82,7 +84,7 @@ public class UserController {
 
     @PostMapping("/uploadAvatar")
     public BaseResponse<String> uploadAvatar(MultipartFile file) throws IOException {
-        String path = fileService.uploadAvatar(file);
+        String path = userService.uploadAvatar(file);
         return ResponseGenerator.returnOK("成功上传文件", path);
     }
 

@@ -24,4 +24,10 @@ public class TestFTP {
         String result = TestFTPUtils.uploadFile(resource.getFilename(), resource.getInputStream());
         System.out.println("result = " + result);
     }
+
+    @Test
+    void deleteFile() {
+        String filePath = "/ftp/05818e1d-44ef-44b2-b990-b2dfb710adf6.png";
+        TestFTPUtils.deleteFile(filePath);
+    }
 }

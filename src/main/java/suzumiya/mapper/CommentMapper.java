@@ -23,6 +23,12 @@ public interface CommentMapper extends BaseMapper<Comment> {
     @Select("SELECT user_id FROM tb_comment WHERE id = #{commentId}")
     Long getUserIdByCommentId(@Param("commentId") Long commentId);
 
+    @Select("SELECT content FROM tb_comment WHERE id = #{commentId}")
+    String getContentByCommentId(@Param("commentId") Long commentId);
+
+    @Select("SELECT pictures FROM tb_comment WHERE id = #{commentId}")
+    String getPicturesByCommentId(@Param("commentId") Long commentId);
+
     @Delete("UPDATE tb_comment SET is_delete = 1 WHERE target_type = #{targetType} AND target_id = #{targetId}")
     void deleteCommentByTargetTypeAndTargetId(@Param("targetType") Integer targetType, @Param("targetId") Long targetId);
 

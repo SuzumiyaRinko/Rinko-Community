@@ -1,6 +1,7 @@
 package suzumiya.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -72,16 +73,21 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
 //        comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));
 
         /* 新增comment到MySQL */
-        //TODO 这两行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();
         comment.setUserId(myUserId);
-//        comment.setUserId(1L); // 这行代码应该被注释掉
 
         Integer targetType = commentInsertDTO.getType();
         Long targetId = commentInsertDTO.getTargetId();
         comment.setTargetType(targetType);
         comment.setTargetId(targetId);
+
+        // picturesSplit转pictures
+        String[] picturesSpilt = commentInsertDTO.getPicturesSplit();
+        String pictures = StrUtil.join("|", picturesSpilt);
+        comment.setPictures(pictures);
+        comment.setPicturesSplit(picturesSpilt);
+
         commentMapper.insert(comment);
 
         if (targetType == CommonConst.COMMENT_TYPE_2POST) {
@@ -100,6 +106,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                 messageInsertDTO.setIsSystem(true);
                 messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_POST_COMMENT);
                 messageInsertDTO.setTargetId(postId);
+                messageInsertDTO.setEventUserId(myUserId);
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         } else {
@@ -107,7 +114,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             redisTemplate.opsForValue().increment(RedisConst.COMMENT_RECOMMENT_COUNT_KEY + targetId);
 
             /* 发送系统消息（异步） */
-            Long commentId = comment.getId();
+            Long commentId = commentInsertDTO.getTargetId();
             Long toUserId = commentMapper.getUserIdByCommentId(commentId);
             if (!ObjectUtil.equals(myUserId, toUserId)) {
                 MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
@@ -115,6 +122,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
                 messageInsertDTO.setIsSystem(true);
                 messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_COMMENT_RECOMMENT);
                 messageInsertDTO.setTargetId(commentId);
+                messageInsertDTO.setEventUserId(myUserId);
                 rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
             }
         }
@@ -197,12 +205,19 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             // 2.4 获取User信息
             User simpleUser = userService.getSimpleUserById(comment.getUserId());
             comment.setCommentUser(simpleUser);
+            // 2.5 pictures转picturesSplit
+            String pictures = comment.getPictures();
+            if (ObjectUtil.isNotEmpty(pictures)) {
+                comment.setPicturesSplit(comment.getPictures().split("\\|"));
+            } else {
+                comment.setPicturesSplit(new String[0]);
+            }
             if (targetType == CommentSelectDTO.TARGET_TYPE_POST) {
-                // 2.5 返回targetId的前3条comment
+                // 2.6 返回targetId的前3条comment
                 Long id = comment.getId();
                 List<String> first3Comments = commentMapper.getFirst3CommentsByTargetId(id);
                 comment.setFirst3Comments(first3Comments);
-                // 2.6 获取并为comment设置likeCount, commentCount
+                // 2.7 获取并为comment设置likeCount, commentCount
                 Long commentId = comment.getId();
                 ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
                 Object tmpLikeCount = valueOperations.get(RedisConst.COMMENT_LIKE_COUNT_KEY + commentId);

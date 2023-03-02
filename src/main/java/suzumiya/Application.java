@@ -44,6 +44,7 @@ public class Application {
         /* 缓存预热 */
         List<User> simpleUsers = userMapper.getSimpleUsers();
         for (User simpleUser : simpleUsers) {
+            simpleUser.setRoles(userMapper.getRolesByUserId(simpleUser.getId()));
             userCache.put(CacheConst.CACHE_USER_KEY + simpleUser.getId(), simpleUser);
         }
 

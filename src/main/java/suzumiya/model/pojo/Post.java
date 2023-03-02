@@ -30,6 +30,9 @@ public class Post implements Serializable {
     // 内容（长度不能超过5000）
     @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart", copyTo = "searchField")
     private String content;
+    // 图片
+    @Field(type = FieldType.Text, index = false)
+    private String pictures;
     // Tag标签（最大值是2^31-1，所以可以表示31个tag，二进制从左往右读）
     @Field(type = FieldType.Integer, index = false)
     private Integer tags;
@@ -82,4 +85,11 @@ public class Post implements Serializable {
     // 收藏数量
     @TableField(exist = false)
     public Integer collectionCount;
+
+    // 前三张图片
+    @TableField(exist = false)
+    public String[] first3PicturesSplit;
+    // 图片
+    @TableField(exist = false)
+    public String[] picturesSplit;
 }

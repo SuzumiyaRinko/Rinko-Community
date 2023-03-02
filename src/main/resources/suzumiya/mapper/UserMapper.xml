@@ -7,7 +7,8 @@
     </sql>
 
     <sql id="SIMPLE_COLUMNS">
-        id, nickname, gender, is_famous, avatar
+        id
+        , nickname, gender, avatar
     </sql>
 
     <!-- User getUserById(Long userId) -->

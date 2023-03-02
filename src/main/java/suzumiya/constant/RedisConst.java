@@ -23,6 +23,8 @@ public class RedisConst {
     public static final String USER_FOLLOWER_KEY = "user:follower:"; // user:follower:{userId}
     // 某个user的私信对象的set集合
     public static final String USER_MESSAGE_KEY = "user:message:"; // user:message:{userId}
+    // 某个user的Feed集合
+    public static final String USER_FEED_KEY = "user:feed:"; // user:feed:{userId}
 
     /* Post */
     // 当前post总数

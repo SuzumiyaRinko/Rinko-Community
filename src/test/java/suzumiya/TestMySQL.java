@@ -72,13 +72,13 @@ public class TestMySQL {
     }
 
     // 增量更新
-    @Test
-    void testUpdate() {
-        User user = new User();
-        user.setId(1L);
-        user.setIsFamous(true);
-        userService.updateById(user);
-    }
+//    @Test
+//    void testUpdate() {
+//        User user = new User();
+//        user.setId(1L);
+//        user.setIsFamous(true);
+//        userService.updateById(user);
+//    }
 
     // 测试逻辑删除
     @Test
@@ -92,10 +92,10 @@ public class TestMySQL {
         System.out.println(names);
     }
 
-    @Test
-    void testUserMapper() {
-        System.out.println(Boolean.TRUE.equals(userMapper.getIsFamousByUserId(114514L)));
-    }
+//    @Test
+//    void testUserMapper() {
+//        System.out.println(Boolean.TRUE.equals(userMapper.getIsFamousByUserId(114514L)));
+//    }
 
     @Test
     void testPostMapper() {
@@ -160,5 +160,10 @@ public class TestMySQL {
     @Test
     void testCommentMapper() {
         commentMapper.deleteCommentByTargetTypeAndTargetId(2, 1L);
+    }
+
+    @Test
+    void getRolesByUserId() {
+        System.out.println(userMapper.getRolesByUserId(3L));
     }
 }

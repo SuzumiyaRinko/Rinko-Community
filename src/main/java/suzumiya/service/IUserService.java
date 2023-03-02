@@ -1,6 +1,7 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.web.multipart.MultipartFile;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.dto.UserUpdateDTO;
@@ -29,11 +30,10 @@ public interface IUserService extends IService<User> {
     /* 获取用户的简单信息（多级缓存） */
     User getSimpleUserById(Long userId);
 
-    /* 关注 */
-    int UNFOLLOW_SUCCESS = 0;
-    int FOLLOW_SUCCESS = 1;
+    /* 关注/取消关注 */
+    void follow(Long targetId);
 
-    int follow(Long targetId);
+    Boolean hasFollow(Long targetId);
 
     /* 获取关注列表 */
     int FOLLOWINGS_STANDARD_PAGE_SIZE = 30;
@@ -41,6 +41,8 @@ public interface IUserService extends IService<User> {
     FollowingSelectVO getFollowings(Long lastId);
 
     UserInfoVo getUserInfo(Long userId);
+
+    String uploadAvatar(MultipartFile multipartFile) throws IOException;
 
     void updateUserInfo(UserUpdateDTO userUpdateDTO);
 }

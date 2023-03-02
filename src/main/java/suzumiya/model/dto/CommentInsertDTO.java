@@ -13,6 +13,8 @@ public class CommentInsertDTO implements Serializable {
     private Long targetId;
     // 内容
     private String content;
+    // 图片
+    private String[] picturesSplit;
 
     /* Comment */
     public static final int COMMENT_TYPE_2POST = 1; // 评论post的comment

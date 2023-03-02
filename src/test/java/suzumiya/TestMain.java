@@ -7,7 +7,7 @@ import java.util.List;
 public class TestMain {
 
     public static void main(String[] args) {
-        List<String> split = IKAnalyzerUtils.parse("产后护理");
+        List<String> split = IKAnalyzerUtils.parse("123");
         System.out.println(split);
     }
 }

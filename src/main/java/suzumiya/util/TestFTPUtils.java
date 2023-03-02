@@ -61,6 +61,53 @@ public class TestFTPUtils {
         return ftpClient;
     }
 
+    // 上传
+    public static String uploadFile(String fileName, InputStream inputStream) throws IOException {
+        FTPClient ftp = getFtpClient();
+        String finalName = null;
+        try {
+//            ftpClient.changeWorkingDirectory(directory);
+//            ftpClient.enterLocalPassiveMode();
+            // 生成最终文件名
+            String suffix = fileName.substring(fileName.lastIndexOf("."));
+            finalName = UUID.randomUUID() + suffix;
+            ftp.storeFile(finalName, inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            inputStream.close();
+            releaseFtpClient(ftp);
+        }
+//        return "/ftp/" + directory + "/" + finalName;
+        return "/ftp/" + finalName;
+    }
+
+    // 删除
+    public static void deleteFile(String remotePath) {
+        FTPClient ftpClient = getFtpClient();
+        try {
+            String finalPath = remotePath.substring("/ftp".length());
+            ftpClient.deleteFile(new String(finalPath.getBytes(encoding), "ISO-8859-1"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            releaseFtpClient(ftpClient);
+        }
+    }
+
+    public static void deleteFile(String path, String remotePath) {
+        FTPClient ftpClient = getFtpClient();
+        try {
+//            ftpClient.changeWorkingDirectory(path);
+            ftpClient.deleteFile(new String(remotePath.getBytes(encoding), "ISO-8859-1"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            releaseFtpClient(ftpClient);
+        }
+    }
+
     public static String[] retrieveFTPFiles(String remotePath) throws IOException {
         FTPClient ftpClient = getFtpClient();
         try {
@@ -76,19 +123,6 @@ public class TestFTPUtils {
         FTPClient ftpClient = getFtpClient();
         try {
             return ftpClient.listFiles();
-        } finally {
-            releaseFtpClient(ftpClient);
-        }
-    }
-
-
-    public static void deleteFTPFiles(String path, String remotePath) {
-        FTPClient ftpClient = getFtpClient();
-        try {
-            ftpClient.changeWorkingDirectory(path);
-            ftpClient.deleteFile(new String(remotePath.getBytes(encoding), "ISO-8859-1"));
-        } catch (IOException e) {
-            e.printStackTrace();
         } finally {
             releaseFtpClient(ftpClient);
         }
@@ -144,29 +178,6 @@ public class TestFTPUtils {
             releaseFtpClient(ftpClient);
         }
         return byteStream.toByteArray();
-    }
-
-
-    public static String uploadFile(String fileName, InputStream inputStream) throws IOException {
-
-        FTPClient ftp = getFtpClient();
-        String finalName = null;
-        try {
-//            ftpClient.changeWorkingDirectory(directory);
-//            ftpClient.enterLocalPassiveMode();
-            // 生成最终文件名
-            String suffix = fileName.substring(fileName.lastIndexOf("."));
-            finalName = UUID.randomUUID() + suffix;
-            ftp.storeFile(finalName, inputStream);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        } finally {
-            inputStream.close();
-            releaseFtpClient(ftp);
-        }
-//        return "/ftp/" + directory + "/" + finalName;
-        return "/ftp/" + finalName;
     }
 
     public static void downloadFiles(String ftpPath, String savePath) {

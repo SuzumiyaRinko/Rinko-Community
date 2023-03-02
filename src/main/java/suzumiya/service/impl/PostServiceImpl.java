@@ -32,6 +32,7 @@ import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
+import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.PostMapper;
 import suzumiya.mapper.TagMapper;
 import suzumiya.mapper.UserMapper;
@@ -43,6 +44,7 @@ import suzumiya.model.vo.PostSearchVO;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
 import suzumiya.service.IPostService;
+import suzumiya.service.IUserService;
 import suzumiya.util.IKAnalyzerUtils;
 import suzumiya.util.RedisUtils;
 import suzumiya.util.WordTreeUtils;
@@ -70,6 +72,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     private ElasticsearchRestTemplate esTemplate; // ES
 
     @Autowired
+    private IUserService userService;
+
+    @Autowired
     private ICacheService cacheService;
 
     @Autowired
@@ -80,6 +85,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Autowired
     private PostMapper postMapper;
+
+    @Autowired
+    private CommentMapper commentMapper;
 
     @Autowired
     private PostRepository postRepository;
@@ -118,6 +126,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             }
         }
         post.setTags(tags);
+        // picturesSplit转pictures
+        String[] picturesSpilt = postInsertDTO.getPicturesSplit();
+        if (ObjectUtil.isNotEmpty(picturesSpilt)) {
+            post.setPicturesSplit(picturesSpilt);
+        } else {
+            post.setPicturesSplit(new String[0]);
+        }
+        String pictures = StrUtil.join("|", picturesSpilt);
+        post.setPictures(pictures);
 
         // 新增post到MySQL
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -147,6 +164,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (ObjectUtil.isNotEmpty(members)) {
             List<Long> followerIds = members.stream().map((id) -> ((Integer) id).longValue()).collect(Collectors.toList());
             for (Long followerId : followerIds) {
+                /* 更新follower的feed集合 */
+                redisTemplate.opsForZSet().add(RedisConst.USER_FEED_KEY + followerId, post.getId(), RedisUtils.getZSetScoreBy2EpochSecond(LocalDateTime.now()));
                 /* 发送系统消息（异步） */
                 MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
                 messageInsertDTO.setToUserId(followerId);
@@ -260,8 +279,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         int pageNum = postSearchDTO.getPageNum();
 
         /* 判断isSearchMyself */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (postSearchDTO.getIsSearchMyself()) {
-            User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
             postSearchDTO.setUserId(user.getId());
         }
 
@@ -272,7 +291,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 判断isCache和cacheKey */
         // 只缓存默认排序时的查询结果，且不缓存用户结果
         if (sortType == 1) {
-            if (StrUtil.isBlank(searchKey) && userId != null && userId > 0 && Boolean.TRUE.equals(userMapper.getIsFamousByUserId(userId))) {
+            if (StrUtil.isBlank(searchKey) && userId != null && userId > 0 && user.getRoles().contains(1)) {
+                // 知名用户
                 isCache = true;
                 cacheKey = CacheConst.CACHE_POST_FAMOUS_KEY + userId + ":0:" + pageNum; // 查个人post时，按照时间降序查
             } else if (StrUtil.isBlank(searchKey) && (userId == null || userId < 0)) {
@@ -331,7 +351,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         for (Post post : posts) {
             /* 获取并为post设置SimpleUser */
             Long postUserId = post.getUserId();
-            User simpleUser = userMapper.getSimpleUserById(postUserId);
+            User simpleUser = userService.getSimpleUserById(postUserId);
             post.setPostUser(simpleUser);
 
             /* 获取并为post设置likeCount, commentCount, collectionCount */
@@ -349,6 +369,15 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             post.setLikeCount(likeCount);
             post.setCommentCount(commentCount);
             post.setCollectionCount(collectionCount);
+
+            /* 设置first3picturesSplit */
+            String[] picturesSplit = post.getPicturesSplit();
+            int end = Math.min(picturesSplit.length, 3);
+            String[] t = new String[end];
+            for (int i = 0; i <= end - 1; i++) {
+                t[i] = picturesSplit[i];
+            }
+            post.setFirst3PicturesSplit(t);
         }
 
         /* 返回结果 */
@@ -610,7 +639,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             for (Post post : collectionPost) {
                 /* 获取并为post设置SimpleUser */
                 Long postUserId = post.getUserId();
-                User simpleUser = userMapper.getSimpleUserById(postUserId);
+                User simpleUser = userService.getSimpleUserById(postUserId);
                 post.setPostUser(simpleUser);
 
                 /* 获取并为post设置likeCount, commentCount, collectionCount */
@@ -628,12 +657,106 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 post.setLikeCount(likeCount);
                 post.setCommentCount(commentCount);
                 post.setCollectionCount(collectionCount);
+
+                /* 设置first3picturesSplit */
+                String[] picturesSplit = post.getPicturesSplit();
+                int end = Math.min(picturesSplit.length, 3);
+                String[] tt = new String[end];
+                for (int i = 0; i <= end - 1; i++) {
+                    tt[i] = picturesSplit[i];
+                }
+                post.setFirst3PicturesSplit(tt);
             }
             Long total = redisTemplate.opsForZSet().zCard(RedisConst.USER_COLLECTIONS_KEY + myUserId);
             postSearchVO.setTotal(total.intValue());
             postSearchVO.setData((List<Post>) collectionPost);
         }
         return postSearchVO;
+    }
+
+    @Override
+    public PostSearchVO getFeeds(Integer pageNum) {
+        PostSearchVO postSearchVO = new PostSearchVO();
+        /* 获取当前用户的collectionPostIDs */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+        long startIndex = (long) (pageNum - 1) * CommonConst.STANDARD_PAGE_SIZE;
+        Set<Object> t = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_FEED_KEY + myUserId, startIndex, CommonConst.STANDARD_PAGE_SIZE);
+        if (ObjectUtil.isEmpty(t)) {
+            postSearchVO.setTotal(0);
+            postSearchVO.setData(new ArrayList<>());
+        } else {
+            List<Long> feedPostIDs = t.stream().map((el) -> (long) (Integer) el).collect(Collectors.toList());
+            Iterable<Post> collectionPost = postRepository.findAllById(feedPostIDs);
+            for (Post post : collectionPost) {
+                /* 获取并为post设置SimpleUser */
+                Long postUserId = post.getUserId();
+                User simpleUser = userService.getSimpleUserById(postUserId);
+                post.setPostUser(simpleUser);
+
+                /* 获取并为post设置likeCount, commentCount, collectionCount */
+                Long postId = post.getId();
+                ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+                Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
+                Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
+                Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+                int likeCount = 0;
+                int commentCount = 0;
+                int collectionCount = 0;
+                if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+                if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+                if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
+                post.setLikeCount(likeCount);
+                post.setCommentCount(commentCount);
+                post.setCollectionCount(collectionCount);
+
+                /* 设置first3picturesSplit */
+                String[] picturesSplit = post.getPicturesSplit();
+                int end = Math.min(picturesSplit.length, 3);
+                String[] tt = new String[end];
+                for (int i = 0; i <= end - 1; i++) {
+                    tt[i] = picturesSplit[i];
+                }
+                post.setFirst3PicturesSplit(tt);
+            }
+            Long total = redisTemplate.opsForZSet().zCard(RedisConst.USER_COLLECTIONS_KEY + myUserId);
+            postSearchVO.setTotal(total.intValue());
+            postSearchVO.setData((List<Post>) collectionPost);
+        }
+        return postSearchVO;
+    }
+
+    @Override
+    public Post getPostByCommentId(Long commentId) {
+        Long postId = commentMapper.getTargetIdByCommentId(commentId);
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("该post不存在");
+        }
+
+        Post post = postOptional.get();
+
+        /* 获取并为post设置SimpleUser */
+        Long postUserId = post.getUserId();
+        User simpleUser = userService.getSimpleUserById(postUserId);
+        post.setPostUser(simpleUser);
+
+        /* 获取并为post设置likeCount, commentCount, collectionCount */
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
+        Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
+        Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+        int likeCount = 0;
+        int commentCount = 0;
+        int collectionCount = 0;
+        if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+        if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+        if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
+        post.setLikeCount(likeCount);
+        post.setCommentCount(commentCount);
+        post.setCollectionCount(collectionCount);
+
+        return post;
     }
 
     @Override
@@ -678,6 +801,4 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
         cacheService.clearCache(cacheClearDTO);
     }
-
-
 }

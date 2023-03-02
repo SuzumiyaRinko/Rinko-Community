@@ -1,6 +1,7 @@
 package suzumiya.mq;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -16,6 +17,7 @@ import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.MessageMapper;
+import suzumiya.mapper.PostMapper;
 import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.MessageInsertDTO;
@@ -24,6 +26,7 @@ import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
 import suzumiya.service.IMessageService;
 import suzumiya.util.MailUtils;
+import suzumiya.util.TestFTPUtils;
 
 import javax.annotation.Resource;
 import javax.mail.MessagingException;
@@ -41,6 +44,9 @@ public class MQConsumer {
 
     @Autowired
     private IMessageService messageService;
+
+    @Autowired
+    private PostMapper postMapper;
 
     @Autowired
     private CommentMapper commentMapper;
@@ -124,16 +130,45 @@ public class MQConsumer {
             key = {MQConstant.POST_DELETE_KEY}
     ))
     public void listenPostDeleteQueue(Long postId) {
-        /* 删除所有comment以及其相关recomment */
+        /* 在FTP中删除该post的pictures */
+        String pictures = postMapper.getPicturesByPostId(postId);
+        if (StrUtil.isNotBlank(pictures)) {
+            String[] picturesSplit = pictures.split("\\|");
+            for (String filePath : picturesSplit) {
+                TestFTPUtils.deleteFile(filePath);
+            }
+        }
+
+        /* 删除所有comment, comment的pictures, 以及其相关recomment, recomment的pictures */
         List<Long> commentIDs = commentMapper.getAllCommentIdByPostId(postId);
         for (Long commentID : commentIDs) {
             List<Long> recommentIDs = commentMapper.getAllRecommentIdByCommentId(commentID);
             if (ObjectUtil.isNotEmpty(recommentIDs)) {
                 commentMapper.deleteBatchIds(recommentIDs);
+                for (Long recommentID : recommentIDs) {
+                    /* 在FTP中删除该recomment的pictures */
+                    pictures = commentMapper.getPicturesByCommentId(recommentID);
+                    if (StrUtil.isNotBlank(pictures)) {
+                        String[] picturesSplit = pictures.split("\\|");
+                        for (String filePath : picturesSplit) {
+                            TestFTPUtils.deleteFile(filePath);
+                        }
+                    }
+                }
             }
         }
         if (ObjectUtil.isNotEmpty(commentIDs)) {
             commentMapper.deleteBatchIds(commentIDs);
+            for (Long commentID : commentIDs) {
+                /* 在FTP中删除该comment的pictures */
+                pictures = commentMapper.getPicturesByCommentId(commentID);
+                if (StrUtil.isNotBlank(pictures)) {
+                    String[] picturesSplit = pictures.split("\\|");
+                    for (String filePath : picturesSplit) {
+                        TestFTPUtils.deleteFile(filePath);
+                    }
+                }
+            }
         }
 
         /* 删除该post的like相关数据 */

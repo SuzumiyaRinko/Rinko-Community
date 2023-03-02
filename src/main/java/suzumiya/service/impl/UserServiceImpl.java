@@ -25,17 +25,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
 import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
+import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
 import suzumiya.model.dto.UserUpdateDTO;
+import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
+import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
 
 import javax.annotation.Resource;
@@ -67,6 +71,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private IFileService fileService;
 
     @Autowired
     private UserMapper userMapper;
@@ -129,6 +136,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         User authenticatedUser = (User) authentication.getPrincipal();
         List<String> authoritiesStr = userMapper.getAuthoritiesStrByUserId(authenticatedUser.getId());
         authenticatedUser.setAuthoritiesStr(authoritiesStr);
+
+        /* 查询roles */
+        authenticatedUser.setRoles(userMapper.getRolesByUserId(authenticatedUser.getId()));
 
         /* 把用户信息存放到Redis中，TTL为30mins */
         String key = RedisConst.LOGIN_USER_KEY + authenticatedUser.getId();
@@ -264,27 +274,47 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public User getSimpleUserById(Long userId) {
         String cacheKey = CacheConst.CACHE_USER_KEY + userId;
-        return (User) userCache.get(cacheKey, (xx) -> userMapper.getSimpleUserById(userId));
+        return (User) userCache.get(cacheKey, (xx) -> {
+            User user = userMapper.getSimpleUserById(userId);
+            user.setRoles(userMapper.getRolesByUserId(userId));
+            return user;
+        });
     }
 
     @Override
-    public int follow(Long targetId) {
-        //TODO 这2行代码不应该被注释掉
+    public void follow(Long targetId) {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
+        Long myUserId = user.getId();
 
-        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myId, targetId))) {
+        /* 判断非法请求 */
+        if (targetId.equals(myUserId)) {
+            return;
+        }
+
+        if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId))) {
             /* 取消关注target */
-            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
-            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWER_KEY + targetId, myId);
-            return IUserService.UNFOLLOW_SUCCESS;
+            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId);
+            redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWER_KEY + targetId, myUserId);
         } else {
             /* 关注target */
-            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWING_KEY + myId, targetId);
-            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWER_KEY + targetId, myId);
-            return IUserService.FOLLOW_SUCCESS;
+            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId);
+            redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWER_KEY + targetId, myUserId);
+            /* 发送系统消息 */
+            MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
+            messageInsertDTO.setToUserId(targetId);
+            messageInsertDTO.setEventUserId(myUserId);
+            messageInsertDTO.setIsSystem(true);
+            messageInsertDTO.setSystemMsgType(Message.SYSTEM_TYPE_SOMEONE_FOLLOWING);
+            messageInsertDTO.setTargetId(myUserId);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_INSERT_KEY, messageInsertDTO);
         }
+    }
+
+    @Override
+    public Boolean hasFollow(Long targetId) {
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+        return redisTemplate.opsForSet().isMember(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId);
     }
 
     @Override
@@ -336,8 +366,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userInfoVo.setId(simpleUser.getId());
         userInfoVo.setNickname(simpleUser.getNickname());
         userInfoVo.setGender(simpleUser.getGender());
-        userInfoVo.setIsFamous(simpleUser.getIsFamous());
         userInfoVo.setAvatar(simpleUser.getAvatar());
+        userInfoVo.setRoles(simpleUser.getRoles());
+
         // followingsCount和followersCount
         Long followingsCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
         Long followersCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
@@ -347,6 +378,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userInfoVo.setFollowersCount(followersCount);
 
         return userInfoVo;
+    }
+
+    @Override
+    public String uploadAvatar(MultipartFile file) throws IOException {
+        /* FTP存储该文件 */
+        String filePath = fileService.uploadFile(file);
+
+        /* 存储到MySQL */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+        User t = new User();
+        t.setId(myUserId);
+        t.setAvatar(filePath);
+        userMapper.updateById(t);
+
+        /* 清除该用户的缓存（异步） */
+        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
+
+        return filePath;
     }
 
     @Override
