@@ -31,10 +31,7 @@ import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.UserMapper;
-import suzumiya.model.dto.MessageInsertDTO;
-import suzumiya.model.dto.UserLoginDTO;
-import suzumiya.model.dto.UserRegisterDTO;
-import suzumiya.model.dto.UserUpdateDTO;
+import suzumiya.model.dto.*;
 import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
@@ -295,11 +292,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             /* 取消关注target */
             redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId);
             redisTemplate.opsForSet().remove(RedisConst.USER_FOLLOWER_KEY + targetId, myUserId);
+            /* 在自己的Feed流中移除对方的数据（异步） */
+            UserUnfollowDTO userUnfollowDTO = new UserUnfollowDTO();
+            userUnfollowDTO.setMyUserId(myUserId);
+            userUnfollowDTO.setTargetId(targetId);
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.USER_UNFOLLOW_KEY, userUnfollowDTO);
         } else {
             /* 关注target */
             redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWING_KEY + myUserId, targetId);
             redisTemplate.opsForSet().add(RedisConst.USER_FOLLOWER_KEY + targetId, myUserId);
-            /* 发送系统消息 */
+            /* 发送系统消息（异步） */
             MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
             messageInsertDTO.setToUserId(targetId);
             messageInsertDTO.setEventUserId(myUserId);
@@ -319,10 +321,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public FollowingSelectVO getFollowings(Long lastId) {
-        //TODO 这2行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
 
         /* 获取本次查询的followingIds */
         List<User> followings = new ArrayList<>();
@@ -371,7 +371,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // followingsCount和followersCount
         Long followingsCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
-        Long followersCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWING_KEY + userId);
+        Long followersCount = redisTemplate.opsForSet().size(RedisConst.USER_FOLLOWER_KEY + userId);
         followingsCount = followingsCount != null ? followingsCount : 0;
         followersCount = followersCount != null ? followersCount : 0;
         userInfoVo.setFollowingsCount(followingsCount);

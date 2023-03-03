@@ -492,7 +492,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                 // 2 手动高光
                 String title = post.getTitle();
                 for (String word : parseList) {
-                    title = title.replaceAll(word, "<em>" + word + "</em>");
+                    title = StrUtil.replace(title, word, "<em>" + word + "</em>", true);
                 }
                 // 3 添加到suggestions
                 suggestions.add(title);
@@ -623,107 +623,20 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public PostSearchVO getCollections(Integer pageNum) {
-        PostSearchVO postSearchVO = new PostSearchVO();
-
         /* 获取当前用户的collectionPostIDs */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();
-        long startIndex = (long) (pageNum - 1) * CommonConst.STANDARD_PAGE_SIZE;
-        Set<Object> t = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_COLLECTIONS_KEY + myUserId, startIndex, CommonConst.STANDARD_PAGE_SIZE);
-        if (ObjectUtil.isEmpty(t)) {
-            postSearchVO.setTotal(0);
-            postSearchVO.setData(new ArrayList<>());
-        } else {
-            List<Long> collectionPostIDs = t.stream().map((el) -> (long) (Integer) el).collect(Collectors.toList());
-            Iterable<Post> collectionPost = postRepository.findAllById(collectionPostIDs);
-            for (Post post : collectionPost) {
-                /* 获取并为post设置SimpleUser */
-                Long postUserId = post.getUserId();
-                User simpleUser = userService.getSimpleUserById(postUserId);
-                post.setPostUser(simpleUser);
 
-                /* 获取并为post设置likeCount, commentCount, collectionCount */
-                Long postId = post.getId();
-                ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
-                Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
-                Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
-                Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
-                int likeCount = 0;
-                int commentCount = 0;
-                int collectionCount = 0;
-                if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
-                if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
-                if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
-                post.setLikeCount(likeCount);
-                post.setCommentCount(commentCount);
-                post.setCollectionCount(collectionCount);
-
-                /* 设置first3picturesSplit */
-                String[] picturesSplit = post.getPicturesSplit();
-                int end = Math.min(picturesSplit.length, 3);
-                String[] tt = new String[end];
-                for (int i = 0; i <= end - 1; i++) {
-                    tt[i] = picturesSplit[i];
-                }
-                post.setFirst3PicturesSplit(tt);
-            }
-            Long total = redisTemplate.opsForZSet().zCard(RedisConst.USER_COLLECTIONS_KEY + myUserId);
-            postSearchVO.setTotal(total.intValue());
-            postSearchVO.setData((List<Post>) collectionPost);
-        }
-        return postSearchVO;
+        return getFromESByZS(RedisConst.USER_COLLECTIONS_KEY + myUserId, pageNum);
     }
 
     @Override
     public PostSearchVO getFeeds(Integer pageNum) {
-        PostSearchVO postSearchVO = new PostSearchVO();
         /* 获取当前用户的collectionPostIDs */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();
-        long startIndex = (long) (pageNum - 1) * CommonConst.STANDARD_PAGE_SIZE;
-        Set<Object> t = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_FEED_KEY + myUserId, startIndex, CommonConst.STANDARD_PAGE_SIZE);
-        if (ObjectUtil.isEmpty(t)) {
-            postSearchVO.setTotal(0);
-            postSearchVO.setData(new ArrayList<>());
-        } else {
-            List<Long> feedPostIDs = t.stream().map((el) -> (long) (Integer) el).collect(Collectors.toList());
-            Iterable<Post> collectionPost = postRepository.findAllById(feedPostIDs);
-            for (Post post : collectionPost) {
-                /* 获取并为post设置SimpleUser */
-                Long postUserId = post.getUserId();
-                User simpleUser = userService.getSimpleUserById(postUserId);
-                post.setPostUser(simpleUser);
 
-                /* 获取并为post设置likeCount, commentCount, collectionCount */
-                Long postId = post.getId();
-                ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
-                Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
-                Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
-                Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
-                int likeCount = 0;
-                int commentCount = 0;
-                int collectionCount = 0;
-                if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
-                if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
-                if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
-                post.setLikeCount(likeCount);
-                post.setCommentCount(commentCount);
-                post.setCollectionCount(collectionCount);
-
-                /* 设置first3picturesSplit */
-                String[] picturesSplit = post.getPicturesSplit();
-                int end = Math.min(picturesSplit.length, 3);
-                String[] tt = new String[end];
-                for (int i = 0; i <= end - 1; i++) {
-                    tt[i] = picturesSplit[i];
-                }
-                post.setFirst3PicturesSplit(tt);
-            }
-            Long total = redisTemplate.opsForZSet().zCard(RedisConst.USER_COLLECTIONS_KEY + myUserId);
-            postSearchVO.setTotal(total.intValue());
-            postSearchVO.setData((List<Post>) collectionPost);
-        }
-        return postSearchVO;
+        return getFromESByZS(RedisConst.USER_FEED_KEY + myUserId, pageNum);
     }
 
     @Override
@@ -800,5 +713,56 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
         cacheService.clearCache(cacheClearDTO);
+    }
+
+    private PostSearchVO getFromESByZS(String zsetKey, Integer pageNum) {
+        PostSearchVO postSearchVO = new PostSearchVO();
+
+        long startIndex = (long) (pageNum - 1) * CommonConst.STANDARD_PAGE_SIZE;
+        Set<Object> t = redisTemplate.opsForZSet().reverseRange(zsetKey, startIndex, CommonConst.STANDARD_PAGE_SIZE);
+
+        if (ObjectUtil.isEmpty(t)) {
+            postSearchVO.setTotal(0);
+            postSearchVO.setData(new ArrayList<>());
+        } else {
+            List<Long> feedPostIDs = t.stream().map((el) -> (long) (Integer) el).collect(Collectors.toList());
+            Iterable<Post> collectionPost = postRepository.findAllById(feedPostIDs);
+            for (Post post : collectionPost) {
+                /* 获取并为post设置SimpleUser */
+                Long postUserId = post.getUserId();
+                User simpleUser = userService.getSimpleUserById(postUserId);
+                post.setPostUser(simpleUser);
+
+                /* 获取并为post设置likeCount, commentCount, collectionCount */
+                Long postId = post.getId();
+                ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+                Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
+                Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
+                Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+                int likeCount = 0;
+                int commentCount = 0;
+                int collectionCount = 0;
+                if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+                if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+                if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
+                post.setLikeCount(likeCount);
+                post.setCommentCount(commentCount);
+                post.setCollectionCount(collectionCount);
+
+                /* 设置first3picturesSplit */
+                String[] picturesSplit = post.getPicturesSplit();
+                int end = Math.min(picturesSplit.length, 3);
+                String[] tt = new String[end];
+                for (int i = 0; i <= end - 1; i++) {
+                    tt[i] = picturesSplit[i];
+                }
+                post.setFirst3PicturesSplit(tt);
+            }
+            Long total = redisTemplate.opsForZSet().zCard(zsetKey);
+            postSearchVO.setTotal(total.intValue());
+            postSearchVO.setData((List<Post>) collectionPost);
+        }
+
+        return postSearchVO;
     }
 }

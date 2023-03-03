@@ -15,6 +15,9 @@ public class MQConstant {
     // 监听用户注册接口
     public static final String USER_REGISTER_QUEUE = "user.register.queue";
     public static final String USER_REGISTER_KEY = "user.register";
+    // 监听用户unfollow接口
+    public static final String USER_UNFOLLOW_QUEUE = "user.unfollow.queue";
+    public static final String USER_UNFOLLOW_KEY = "user.unfollow";
 
     /* Post */
     // 监听Post新增接口

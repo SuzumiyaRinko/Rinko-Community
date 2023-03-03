@@ -21,6 +21,7 @@ import suzumiya.mapper.PostMapper;
 import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.MessageInsertDTO;
+import suzumiya.model.dto.UserUnfollowDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
@@ -84,6 +85,25 @@ public class MQConsumer {
         redisTemplate.opsForValue().set(RedisConst.ACTIVATION_USER_KEY + newUser.getActivationUUID(), newUser.getId(), 30L, TimeUnit.MINUTES); // 30mins
 
         log.debug("正在注册 username={} ", newUser.getUsername());
+    }
+
+    /* 监听用户Unfollow */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.USER_UNFOLLOW_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.USER_UNFOLLOW_KEY}
+    ))
+    public void listenUserUnfollowQueue(UserUnfollowDTO userUnfollowDTO) {
+        /* 在自己的Feed流中移除对方的数据 */
+        Long myUserId = userUnfollowDTO.getMyUserId();
+        Long targetId = userUnfollowDTO.getTargetId();
+        Set<Object> t = redisTemplate.opsForZSet().range(RedisConst.USER_FEED_KEY + myUserId, 0, -1);
+        for (Object tt : t) {
+            long postId = ((Integer) tt).longValue();
+            if (targetId.equals(postMapper.getUserIdByPostId(postId))) {
+                redisTemplate.opsForZSet().remove(RedisConst.USER_FEED_KEY + myUserId, postId);
+            }
+        }
     }
 
     /* 监听Cache更新接口 */
