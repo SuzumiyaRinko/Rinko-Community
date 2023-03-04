@@ -3,7 +3,7 @@
 
 <mapper namespace="suzumiya.mapper.MessageMapper">
     <sql id="BASE_COLUMNS">
-        id, from_user_id, to_user_id, content, is_read, create_time
+        id, from_user_id, to_user_id, content, is_read, target_id, system_msg_type, event_user_id, create_time
     </sql>
 
     <!-- List<Message> getSystemMessagesLtId(@Param("toUserId") Long toUserId, @Param("lastId") Long lastId) -->
@@ -11,7 +11,7 @@
         SELECT
         <include refid="BASE_COLUMNS"/>
         FROM tb_message
-        WHERE from_user_id = 0 AND to_user_id = #{toUserId}
+        WHERE is_delete = 0 AND from_user_id = 0 AND to_user_id = #{toUserId}
         <if test="lastId != null and lastId > 0">
             AND id <![CDATA[<]]> #{lastId}
         </if>
@@ -23,11 +23,22 @@
         SELECT
         <include refid="BASE_COLUMNS"/>
         FROM tb_message
-        WHERE (from_user_id = #{fromUserId} AND to_user_id = #{toUserId}) OR (from_user_id = #{toUserId} AND to_user_id
+        WHERE is_delete = 0 AND (from_user_id = #{fromUserId} AND to_user_id = #{toUserId}) OR (from_user_id =
+        #{toUserId} AND to_user_id
         = #{fromUserId})
         <if test="lastId != null and lastId > 0">
             AND id <![CDATA[<]]> #{lastId}
         </if>
         ORDER BY create_time DESC LIMIT 30
     </select>
+
+    <!-- void setIsRead(@Param("messageType") Integer messageType, @Param("id") Long id, @Param("myUserId") Long myUserId) -->
+    <update id="setIsRead">
+        UPDATE tb_message SET is_read = 1
+        WHERE is_delete = 0
+        <if test="messageType == 1 and id != 0">AND id = #{id}</if>
+        <if test="messageType == 1 and id == 0">AND from_user_id = 0 AND to_user_id = #{myUserId}</if>
+        <if test="messageType == 2 and id != 0">AND from_user_id = #{id} AND to_user_id = #{myUserId}</if>
+        <if test="messageType == 2 and id == 0">AND from_user_id != 0 AND to_user_id = #{myUserId}</if>
+    </update>
 </mapper>

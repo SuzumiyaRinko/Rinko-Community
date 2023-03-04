@@ -540,10 +540,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public void like(Long postId) {
-        //TODO 这2行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
 
         if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(RedisConst.POST_LIKE_LIST_KEY + postId, myId))) {
             /* 减少某个post的点赞数 */
@@ -674,7 +672,32 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public Post getPostByPostId(Long postId) {
-        return postMapper.selectById(postId);
+        Optional<Post> postOptional = postRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            throw new RuntimeException("该POST不存在\n可能已被删除");
+        }
+
+        Post post = postOptional.get();
+
+        /* 获取并为post设置SimpleUser */
+        post.setPostUser(userService.getSimpleUserById(post.getUserId()));
+
+        /* 获取并为post设置likeCount, commentCount, collectionCount */
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        Object tmpLikeCount = valueOperations.get(RedisConst.POST_LIKE_COUNT_KEY + postId);
+        Object tmpCommentCount = valueOperations.get(RedisConst.POST_COMMENT_COUNT_KEY + postId);
+        Object tmpCollectionCount = valueOperations.get(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
+        int likeCount = 0;
+        int commentCount = 0;
+        int collectionCount = 0;
+        if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+        if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+        if (tmpCollectionCount != null) collectionCount = (int) tmpCollectionCount;
+        post.setLikeCount(likeCount);
+        post.setCommentCount(commentCount);
+        post.setCollectionCount(collectionCount);
+
+        return post;
     }
 
     @Override
@@ -757,10 +780,19 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                     tt[i] = picturesSplit[i];
                 }
                 post.setFirst3PicturesSplit(tt);
+
+                /* 记录已被删除的postId */
+                t.remove(post.getId().intValue());
             }
             Long total = redisTemplate.opsForZSet().zCard(zsetKey);
             postSearchVO.setTotal(total.intValue());
             postSearchVO.setData((List<Post>) collectionPost);
+
+            /* 在用户的 collectionsZset/feedsZset 集合中尝试去除已被删除的POST */
+            for (Object tt : t) {
+                Integer deletedPostId = (Integer) tt;
+                redisTemplate.opsForZSet().remove(zsetKey, deletedPostId);
+            }
         }
 
         return postSearchVO;

@@ -47,9 +47,9 @@ public interface IPostService extends IService<Post> {
     /* 查询当前用户的Feed集合 */
     PostSearchVO getFeeds(Integer pageNum);
 
-    /* 根据commentId获取post */
-    Post getPostByCommentId(Long commentId);
-
     /* 根据postId获取post */
     Post getPostByPostId(Long postId);
+
+    /* 根据commentId获取post */
+    Post getPostByCommentId(Long commentId);
 }

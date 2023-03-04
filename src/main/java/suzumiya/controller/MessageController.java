@@ -49,4 +49,30 @@ public class MessageController {
         }
         return ResponseGenerator.returnOK("消息查询成功", messages);
     }
+
+    /*
+        /message/setRead/{messageType}/{id}
+        例子：/message/setRead/1/1, 表示设置id=1的系统消息为"已读"
+             /message/setRead/1/0, 表示设置当前用户的所有系统消息为"已读"
+             /message/setRead/2/1, 表示设置所有from_user_id=1的私聊消息为"已读"
+             /message/setRead/2/0, 表示设置当前用户的所有私聊消息为"已读"
+    */
+    @PostMapping("/setIsRead/{messageType}/{id}")
+    public BaseResponse<Long> setIsRead(@PathVariable("messageType") Integer messageType, @PathVariable("id") Long id) {
+        messageService.setIsRead(messageType, id);
+        return ResponseGenerator.returnOK("设置isRead成功", null);
+    }
+
+    /*
+        /message/deleteMessage/{messageType}/{id}
+        例子：/message/deleteMessage/1/1, 表示删除id=1的系统消息
+             /message/deleteMessage/1/0, 表示删除当前用户的所有系统消息
+             /message/deleteMessage/2/1, 表示删除from_user_id=1的私聊列表（暂时不显示）
+             /message/deleteMessage/2/0, 表示删除当前用户的所有私聊列表（暂时不显示）
+    */
+    @DeleteMapping("/deleteMessage/{messageType}/{id}")
+    public BaseResponse<Long> deleteMessage(@PathVariable("messageType") Integer messageType, @PathVariable("id") Long id) {
+        messageService.deleteMessage(messageType, id);
+        return ResponseGenerator.returnOK("删除message成功", null);
+    }
 }

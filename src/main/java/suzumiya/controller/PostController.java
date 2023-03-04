@@ -85,15 +85,15 @@ public class PostController {
         return ResponseGenerator.returnOK("查询收藏列表成功", postSearchVO);
     }
 
+    @GetMapping("/{postId}")
+    public BaseResponse<Post> getPostByPostId(@PathVariable("postId") Long postId) {
+        Post post = postService.getPostByPostId(postId);
+        return ResponseGenerator.returnOK("查询post成功", post);
+    }
+
     @GetMapping("/getPostByCommentId/{commentId}")
     public BaseResponse<Post> getPostByCommentId(@PathVariable("commentId") Long commentId) {
         Post post = postService.getPostByCommentId(commentId);
         return ResponseGenerator.returnOK("post成功", post);
     }
-
-//    @GetMapping("/{postId}")
-//    public BaseResponse<Post> getPostByPostId(@PathVariable("postId") Long postId) {
-//        Post post = postService.getPostByPostId(postId);
-//        return ResponseGenerator.returnOK("查询post成功", post);
-//    }
 }

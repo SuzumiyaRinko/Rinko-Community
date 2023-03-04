@@ -20,4 +20,8 @@ public interface IMessageService extends IService<Message> {
 
     /* 查询对话消息 */
     MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO);
+
+    void setIsRead(Integer messageType, Long id);
+
+    void deleteMessage(Integer messageType, Long id);
 }

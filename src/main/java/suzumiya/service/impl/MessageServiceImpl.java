@@ -91,24 +91,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             // 6种系统消息
             if (systemMsgType == Message.SYSTEM_TYPE_POST_LIKE) {
                 String title = postMapper.getTitleByPostId(targetId);
-                message.setContent(eventUser.getNickname() + " 给你的帖子 \"" + title + "\" 点了个赞");
+                message.setContent("给点赞了你的帖子 \"" + title + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_POST_COLLECT) {
                 String title = postMapper.getTitleByPostId(targetId);
-                message.setContent(eventUser.getNickname() + " 收藏了你的帖子 \"" + title + "\"");
+                message.setContent("收藏了你的帖子 \"" + title + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_POST_COMMENT) {
                 String title = postMapper.getTitleByPostId(targetId);
-                message.setContent(eventUser.getNickname() + " 评论了你的帖子 \"" + title + "\"");
+                message.setContent("评论了你的帖子 \"" + title + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_POST_FOLLOWING) {
                 String title = postMapper.getTitleByPostId(targetId);
-                message.setContent("你关注的po主 \"" + eventUser.getNickname() + "\" 发布了一个帖子 \"" + title + "\"");
+                message.setContent("你关注的po主发布了一个帖子 \"" + title + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_COMMENT_LIKE) {
                 String content = commentMapper.getContentByCommentId(targetId);
-                message.setContent(eventUser.getNickname() + " 点赞了你的评论 \"" + content + "\"");
+                message.setContent("点赞了你的评论 \"" + content + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_COMMENT_RECOMMENT) {
                 String content = commentMapper.getContentByCommentId(targetId);
-                message.setContent(eventUser.getNickname() + " 评论了你的评论 \"" + content + "\"");
+                message.setContent("评论了你的评论 \"" + content + "\"");
             } else if (systemMsgType == Message.SYSTEM_TYPE_SOMEONE_FOLLOWING) {
-                message.setContent(eventUser.getNickname() + " 关注了你");
+                message.setContent("关注了你");
             }
         } else {
             /* 发送私聊消息 */
@@ -143,31 +143,35 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
     @Override
     public MessageSelectVO getMessages(MessageSelectDTO messageSelectDTO) {
-        //TODO 这两行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
+        Long myUserId = user.getId();
+
         List<Message> messages = new ArrayList<>();
-        Long lastId = null;
+        Long lastId = messageSelectDTO.getLastId();
 
         MessageSelectVO messageSelectVO = new MessageSelectVO();
 
         if (messageSelectDTO.getIsSystem()) {
             // 系统消息
-            lastId = messageSelectDTO.getLastId();
-            messages = messageMapper.getSystemMessagesLtId(myId, lastId);
-            lastId = messages.get(messages.size() - 1).getId();
+            lastId = lastId != null ? lastId : Long.MAX_VALUE;
+            messages = messageMapper.getSystemMessagesLtId(myUserId, lastId);
+            if (messages.size() != 0) {
+                lastId = messages.get(messages.size() - 1).getId();
+                for (Message message : messages) {
+                    message.setEventUser(userService.getSimpleUserById(message.getEventUserId()));
+                }
+            }
         } else {
             // 私信列表
-            Set<Object> objects = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_MESSAGE_KEY + myId, 0L, -1L);
+            Set<Object> objects = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_MESSAGE_KEY + myUserId, 0L, -1L);
             if (ObjectUtil.isNotEmpty(objects)) {
                 for (Object object : objects) {
                     Long fromUserId = (long) (Integer) object;
                     // 获取最后一次对话内容
-                    Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myId);
+                    Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myUserId);
                     if (firstMessage != null) {
                         // 获取对方SimpleUser数据
-                        firstMessage.setFromUser(userService.getSimpleUserById(fromUserId));
+                        firstMessage.setEventUser(userService.getSimpleUserById(fromUserId));
                     }
                     messages.add(firstMessage);
                 }
@@ -177,15 +181,16 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         /* 返回查询结果 */
         messageSelectVO.setMessages(messages);
         messageSelectVO.setLastId(lastId);
+        if (messages.size() == 0) {
+            messageSelectVO.setIsFinished(true);
+        }
         return messageSelectVO;
     }
 
     @Override
     public MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO) {
-        //TODO 这两行代码不应该被注释掉
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myId = user.getId();
-//        Long myId = 1L; // 这行代码应该被注释掉
 
         Long targetId = messageSelectDTO.getTargetId();
         Long lastId = messageSelectDTO.getLastId();
@@ -204,5 +209,43 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         messageSelectVO.setMessages(chatMessages);
         messageSelectVO.setLastId(lastId);
         return messageSelectVO;
+    }
+
+    @Override
+    public void setIsRead(Integer messageType, Long id) {
+        /* 判非法请求 */
+        if (id < 0 || (messageType != 1 && messageType != 2)) {
+            throw new RuntimeException("参数不正确");
+        }
+
+        /* 获取当前用户id */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+
+        /* 设置已读 */
+        messageMapper.setIsRead(messageType, id, myUserId);
+    }
+
+    @Override
+    public void deleteMessage(Integer messageType, Long id) {
+        /* 获取当前用户id */
+        User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long myUserId = user.getId();
+
+        if (messageType == 1) {
+            if (id > 0) {
+                messageMapper.deleteById(id);
+            } else {
+                messageMapper.delete(new LambdaQueryWrapper<Message>()
+                        .eq(Message::getFromUserId, 0)
+                        .eq(Message::getToUserId, myUserId));
+            }
+        } else if (messageType == 2) {
+            if (id > 0) {
+                redisTemplate.opsForZSet().remove(RedisConst.USER_MESSAGE_KEY + myUserId, id);
+            } else {
+                redisTemplate.delete(RedisConst.USER_MESSAGE_KEY + myUserId);
+            }
+        }
     }
 }

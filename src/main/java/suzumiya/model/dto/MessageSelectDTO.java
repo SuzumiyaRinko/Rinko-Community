@@ -7,7 +7,7 @@ import java.io.Serializable;
 @Data
 public class MessageSelectDTO implements Serializable {
 
-    private Boolean isSystem; // 查询系统消息或对话列表
-    private Long targetId; // 对方的userId（查询对话消息时需要传参）
-    private Long lastId; // 按照ID降序查询（时间降序）
+    private Boolean isSystem; // true:系统消息 false:私信列表
+    private Long targetId; // 对方的userId（isSystem==false时需要传参）
+    private Long lastId = Long.MAX_VALUE; // 按照ID降序查询（时间降序）
 }

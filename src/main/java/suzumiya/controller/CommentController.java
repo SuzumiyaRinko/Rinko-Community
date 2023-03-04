@@ -29,6 +29,12 @@ public class CommentController {
         return ResponseGenerator.returnOK("删除评论成功", null);
     }
 
+    @GetMapping("/{commentId}")
+    public BaseResponse<Comment> getCommentByCommentId(@PathVariable("commentId") Long commentId) {
+        Comment comment = commentService.getCommentByCommentId(commentId);
+        return ResponseGenerator.returnOK("查询comment成功", comment);
+    }
+
     @GetMapping
     public BaseResponse<PageInfo<Comment>> select(CommentSelectDTO commentSelectDTO) {
         PageInfo<Comment> pageInfo = commentService.select(commentSelectDTO);

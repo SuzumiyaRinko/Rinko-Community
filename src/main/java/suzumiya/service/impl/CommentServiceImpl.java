@@ -238,6 +238,34 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     }
 
     @Override
+    public Comment getCommentByCommentId(Long commentId) {
+        // 1 获取Comment
+        Comment comment = commentMapper.selectById(commentId);
+        // 2 获取CommentUser
+        User simpleUser = userService.getSimpleUserById(comment.getUserId());
+        comment.setCommentUser(simpleUser);
+        // 3 pictures转picturesSplit
+        String pictures = comment.getPictures();
+        if (ObjectUtil.isNotEmpty(pictures)) {
+            comment.setPicturesSplit(comment.getPictures().split("\\|"));
+        } else {
+            comment.setPicturesSplit(new String[0]);
+        }
+        // 4 获取并为comment设置likeCount, commentCount
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        Object tmpLikeCount = valueOperations.get(RedisConst.COMMENT_LIKE_COUNT_KEY + commentId);
+        Object tmpCommentCount = valueOperations.get(RedisConst.COMMENT_RECOMMENT_COUNT_KEY + commentId);
+        int likeCount = 0;
+        int commentCount = 0;
+        if (tmpLikeCount != null) likeCount = (int) tmpLikeCount;
+        if (tmpCommentCount != null) commentCount = (int) tmpCommentCount;
+        comment.setLikeCount(likeCount);
+        comment.setCommentCount(commentCount);
+
+        return comment;
+    }
+
+    @Override
     public void like(Long commentId) {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();

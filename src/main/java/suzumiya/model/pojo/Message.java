@@ -1,9 +1,6 @@
 package suzumiya.model.pojo;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -45,8 +42,11 @@ public class Message implements Serializable {
     // 修改时间
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Shanghai")
     private LocalDateTime updateTime;
+    // 是否逻辑删除
+    @TableLogic
+    private Boolean isDelete;
 
-    // 评论的用户的部分信息（id, nickname, is_famous, avatar）
+    // 评论的用户的部分信息（id, nickname, avatar, roles）
     @TableField(exist = false)
-    public User fromUser;
+    public User eventUser;
 }

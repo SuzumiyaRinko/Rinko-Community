@@ -14,8 +14,11 @@ public interface ICommentService extends IService<Comment> {
     /* 删除评论 */
     void delete(Long commentId);
 
-    /* 删除评论 */
+    /* 分页查询评论 */
     PageInfo<Comment> select(CommentSelectDTO commentSelectDTO);
+
+    /* 根据commentId查询comment */
+    Comment getCommentByCommentId(Long commentId);
 
     /* 点赞或取消点赞 */
     void like(Long commentId);
