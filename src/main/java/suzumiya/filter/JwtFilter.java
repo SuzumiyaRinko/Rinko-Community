@@ -75,8 +75,13 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         /* 验签 */
-//        String token = request.getHeader("Authorization").substring("Bearer ".length());
-        String token = request.getHeader("Authorization");
+        boolean wsFlag = false;
+        String token;
+        if (uri.startsWith(WSCHAT_URI_PREFIX)) {
+            token = request.getHeader("Sec-WebSocket-Protocol");
+        } else {
+            token = request.getHeader("Authorization");
+        }
         // 判空
         if (StrUtil.isBlank(token)) {
             BaseResponse<Object> baseResponse = ResponseGenerator.returnError(HttpStatus.HTTP_UNAUTHORIZED, "身份认证未通过");
@@ -107,7 +112,7 @@ public class JwtFilter extends OncePerRequestFilter {
         // 刷新用户信息TTL
         redisTemplate.expire(RedisConst.LOGIN_USER_KEY + userId, 30L, TimeUnit.MINUTES);
 
-        /* 如果是ws请求，检验路径muUserId是否和Token中的userId相同 */
+        /* 如果是ws请求，检验路径myUserId是否和Token中的userId相同 */
         if (uri.startsWith(WSCHAT_URI_PREFIX)) {
             String[] split = uri.split("/");
             String wsUserId = split[split.length - 1];

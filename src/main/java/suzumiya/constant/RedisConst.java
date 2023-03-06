@@ -25,6 +25,8 @@ public class RedisConst {
     public static final String USER_MESSAGE_KEY = "user:message:"; // user:message:{userId}
     // 某个user的Feed集合
     public static final String USER_FEED_KEY = "user:feed:"; // user:feed:{userId}
+    // 某个user的未读Message条数（Hash类型, fromUserId -> unreadCount）
+    public static final String USER_UNREAD_KEY = "user:unread:"; // user:unread:{userId}
 
     /* Post */
     // 当前post总数

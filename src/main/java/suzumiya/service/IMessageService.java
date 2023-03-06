@@ -11,8 +11,8 @@ public interface IMessageService extends IService<Message> {
     /* 发信息 */
     void saveMessage(MessageInsertDTO messageInsertDTO);
 
-    /* 查询未读消息条数 */
-    long notReadCount(Boolean isSystem, Long myId);
+    /* 获取当前用户私信列表的总未读消息数 */
+    Integer notReadCount(Long myUserId);
 
     /* 查询系统消息或对话列表 */
     // 如果查询的是对话列表，那么获得的是每个对话对象的第一条消息

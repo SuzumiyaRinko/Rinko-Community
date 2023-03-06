@@ -49,4 +49,7 @@ public class Message implements Serializable {
     // 评论的用户的部分信息（id, nickname, avatar, roles）
     @TableField(exist = false)
     public User eventUser;
+    // 未读消息条数
+    @TableField(exist = false)
+    private Integer unreadCount;
 }

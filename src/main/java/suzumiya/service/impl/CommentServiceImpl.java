@@ -2,6 +2,7 @@ package suzumiya.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -70,7 +71,10 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         comment.setContent(WordTreeUtils.replaceAllSensitiveWords(commentInsertDTO.getContent()));
 
         /* 清除HTML标记 */
-//        comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));
+        comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));
+
+        /* 换行符转换 */
+        comment.setContent(comment.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
 
         /* 新增comment到MySQL */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();

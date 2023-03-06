@@ -5,6 +5,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -112,8 +113,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         post.setContent(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
 
         /* 清除HTML标记 */
-//        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
-//        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+
+        /* 换行符转换 */
+        post.setTitle(post.getTitle().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
+        post.setContent(post.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
 
         /* 新增post到MySQL */
         // 把tagIDs转换为tags

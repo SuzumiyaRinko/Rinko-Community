@@ -2,6 +2,7 @@ package suzumiya.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import suzumiya.constant.CommonConst;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.MessageMapper;
@@ -27,6 +29,7 @@ import suzumiya.util.WordTreeUtils;
 import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -62,6 +65,12 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
         /* 过滤敏感词 */
         messageInsertDTO.setContent(WordTreeUtils.replaceAllSensitiveWords(messageInsertDTO.getContent()));
+
+        /* 清除HTML标记 */
+        messageInsertDTO.setContent(HtmlUtil.cleanHtmlTag(messageInsertDTO.getContent()));
+
+        /* 换行符转换 */
+        messageInsertDTO.setContent(messageInsertDTO.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
 
         Message message = new Message();
         Long toUserId = messageInsertDTO.getToUserId();
@@ -127,18 +136,16 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     }
 
     @Override
-    public long notReadCount(Boolean isSystem, Long myId) {
-        LambdaQueryWrapper<Message> queryWrapper = new LambdaQueryWrapper<>();
-        // 未读
-        queryWrapper.eq(Message::getIsRead, false);
-        // 发给当前用户的消息
-        queryWrapper.eq(Message::getToUserId, myId);
-        if (isSystem) {
-            queryWrapper.eq(Message::getFromUserId, 0);
-        } else {
-            queryWrapper.ne(Message::getFromUserId, 0);
+    public Integer notReadCount(Long myUserId) {
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries(RedisConst.USER_UNREAD_KEY + myUserId);
+        Integer unreadCount = 0;
+        if (ObjectUtil.isNotEmpty(entries)) {
+            for (Object value : entries.values()) {
+                unreadCount += (Integer) value;
+            }
         }
-        return messageMapper.selectCount(queryWrapper);
+
+        return unreadCount;
     }
 
     @Override
@@ -162,18 +169,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
                 }
             }
         } else {
-            // 私信列表
+            // 私信列表（全部一起查）
             Set<Object> objects = redisTemplate.opsForZSet().reverseRange(RedisConst.USER_MESSAGE_KEY + myUserId, 0L, -1L);
             if (ObjectUtil.isNotEmpty(objects)) {
                 for (Object object : objects) {
                     Long fromUserId = (long) (Integer) object;
                     // 获取最后一次对话内容
-                    Message firstMessage = messageMapper.getFirstMessageBy2Id(fromUserId, myUserId);
-                    if (firstMessage != null) {
-                        // 获取对方SimpleUser数据
-                        firstMessage.setEventUser(userService.getSimpleUserById(fromUserId));
+                    Message lastMessage = messageMapper.getLastMessageBy2Id(fromUserId, myUserId);
+                    // 获取对方SimpleUser数据
+                    lastMessage.setEventUser(userService.getSimpleUserById(fromUserId));
+                    // 获取未读条数
+                    Object o = redisTemplate.opsForHash().get(RedisConst.USER_UNREAD_KEY + myUserId, String.valueOf(fromUserId));
+                    if (o != null) {
+                        lastMessage.setUnreadCount((Integer) o);
+                    } else {
+                        lastMessage.setUnreadCount(0);
                     }
-                    messages.add(firstMessage);
+
+                    messages.add(lastMessage);
                 }
             }
         }
@@ -190,14 +203,19 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     @Override
     public MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO) {
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long myId = user.getId();
+        Long myUserId = user.getId();
 
         Long targetId = messageSelectDTO.getTargetId();
         Long lastId = messageSelectDTO.getLastId();
+        if (lastId == null) {
+            lastId = Long.MAX_VALUE;
+        }
 
         /* 查询对话双方的详细Message */
-        List<Message> chatMessages = messageMapper.getChatMessagesLtId(myId, targetId, lastId);
-        lastId = chatMessages.get(chatMessages.size() - 1).getId();
+        List<Message> chatMessages = messageMapper.getChatMessagesLtId(myUserId, targetId, lastId);
+        if (chatMessages.size() != 0) {
+            lastId = chatMessages.get(chatMessages.size() - 1).getId();
+        }
         if (ObjectUtil.isNotEmpty(chatMessages)) {
             // 按照时间由旧到新排序
             chatMessages = new ArrayList<>(chatMessages);
@@ -208,6 +226,9 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         MessageSelectVO messageSelectVO = new MessageSelectVO();
         messageSelectVO.setMessages(chatMessages);
         messageSelectVO.setLastId(lastId);
+        if (chatMessages.size() == 0) {
+            messageSelectVO.setIsFinished(true);
+        }
         return messageSelectVO;
     }
 
@@ -223,7 +244,13 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         Long myUserId = user.getId();
 
         /* 设置已读 */
-        messageMapper.setIsRead(messageType, id, myUserId);
+        if (messageType == 1) {
+            messageMapper.setIsRead(messageType, id, myUserId);
+        } else if (messageType == 2 && id > 0) {
+            redisTemplate.opsForHash().delete(RedisConst.USER_UNREAD_KEY + myUserId, String.valueOf(id));
+        } else if (messageType == 2 && id == 0) {
+            redisTemplate.delete(RedisConst.USER_UNREAD_KEY + myUserId);
+        }
     }
 
     @Override

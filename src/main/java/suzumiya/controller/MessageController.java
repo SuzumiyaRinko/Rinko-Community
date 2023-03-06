@@ -29,13 +29,14 @@ public class MessageController {
         return ResponseGenerator.returnOK("消息发送成功", null);
     }
 
+    // 获取当前用户私信列表的总未读消息数
     @GetMapping("/notReadCount")
-    public BaseResponse<Long> notReadCount(@RequestParam("isSystem") Boolean isSystem) {
+    public BaseResponse<Integer> notReadCount() {
         // 获取当前用户id
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Long myId = user.getId();
+        Long myUserId = user.getId();
 
-        long notReadCount = messageService.notReadCount(isSystem, myId);
+        Integer notReadCount = messageService.notReadCount(myUserId);
         return ResponseGenerator.returnOK("未读消息条数查询成功", notReadCount);
     }
 
@@ -54,8 +55,8 @@ public class MessageController {
         /message/setRead/{messageType}/{id}
         例子：/message/setRead/1/1, 表示设置id=1的系统消息为"已读"
              /message/setRead/1/0, 表示设置当前用户的所有系统消息为"已读"
-             /message/setRead/2/1, 表示设置所有from_user_id=1的私聊消息为"已读"
-             /message/setRead/2/0, 表示设置当前用户的所有私聊消息为"已读"
+             /message/setRead/2/1, 表示设置fromUserId=1的unreadCount为0
+             /message/setRead/2/0, 表示设置当前用户的unreadCount为0
     */
     @PostMapping("/setIsRead/{messageType}/{id}")
     public BaseResponse<Long> setIsRead(@PathVariable("messageType") Integer messageType, @PathVariable("id") Long id) {

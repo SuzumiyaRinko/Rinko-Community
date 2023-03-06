@@ -7,12 +7,17 @@ import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Scope;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import suzumiya.constant.CommonConst;
+import suzumiya.constant.RedisConst;
 import suzumiya.mapper.MessageMapper;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Message;
 import suzumiya.service.IMessageService;
+import suzumiya.service.IUserService;
 import suzumiya.service.impl.MessageServiceImpl;
+import suzumiya.service.impl.UserServiceImpl;
 
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
@@ -27,18 +32,22 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WSChatController {
 
     public static IMessageService messageService;
+    public static IUserService userService;
     public static MessageMapper messageMapper;
     public static Cache<String, Object> userCache; // Caffeine
     public static ObjectMapper objectMapper;
+    public static RedisTemplate<String, Object> redisTemplate;
 
     static {
         // 获取IOC容器
         ApplicationContext ioc = SpringUtil.getApplicationContext();
         // 获取SpringBean
         messageService = ioc.getBean(MessageServiceImpl.class);
+        userService = ioc.getBean(UserServiceImpl.class);
         messageMapper = ioc.getBean(MessageMapper.class);
         userCache = ioc.getBean("userCache", Cache.class);
         objectMapper = ioc.getBean(ObjectMapper.class);
+        redisTemplate = ioc.getBean("redisTemplate", RedisTemplate.class);
     }
 
     // 记录所有当前在线连接
@@ -50,7 +59,7 @@ public class WSChatController {
         // 将当前用户存储在容器中
         sessionMap.put(myUserId, session);
 
-        log.debug("ws连接, userId={}", myUserId);
+        log.debug("ws连接, userId={}, 当前人数: {}", myUserId, sessionMap.size());
     }
 
     // 接收到前端发送的数据时被调用（消息中转站）
@@ -59,20 +68,31 @@ public class WSChatController {
         /* 获取message对象 */
         Message message = objectMapper.readValue(messageJson, Message.class);
 
-        /* 存储message到MySQL */
         Long toUserId = message.getToUserId();
+
+        /* 对方未读数量+1 */
+        Long newUnreadCount = redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + toUserId, String.valueOf(myUserId), 1L);
+        message.setUnreadCount(newUnreadCount.intValue());
+
+        /* 获取其他信息 */
+        message.setFromUserId(myUserId);
+        message.setEventUser(userService.getSimpleUserById(myUserId));
+
+        /* 存储message到MySQL */
         MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
         messageInsertDTO.setMyId(myUserId);
         messageInsertDTO.setFromUserId(myUserId);
         messageInsertDTO.setToUserId(toUserId);
         messageInsertDTO.setContent(message.getContent());
+        //TODO message.getPictures()
         messageInsertDTO.setIsSystem(false);
         messageService.saveMessage(messageInsertDTO);
 
         /* 判断是否需要通过ws发送消息给对方 */
-        Session toSession;
-        if ((toSession = sessionMap.get(toUserId)) != null) {
-            toSession.getAsyncRemote().sendText(messageJson);
+        Session toSession = sessionMap.get(toUserId);
+        if (toSession != null) {
+            message.setContent(message.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
+            toSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
         }
     }
 

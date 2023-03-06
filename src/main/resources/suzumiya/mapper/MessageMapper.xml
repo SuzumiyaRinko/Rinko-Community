@@ -12,9 +12,7 @@
         <include refid="BASE_COLUMNS"/>
         FROM tb_message
         WHERE is_delete = 0 AND from_user_id = 0 AND to_user_id = #{toUserId}
-        <if test="lastId != null and lastId > 0">
-            AND id <![CDATA[<]]> #{lastId}
-        </if>
+        AND id <![CDATA[<]]> #{lastId}
         ORDER BY create_time DESC LIMIT 30
     </select>
 
@@ -26,9 +24,7 @@
         WHERE is_delete = 0 AND (from_user_id = #{fromUserId} AND to_user_id = #{toUserId}) OR (from_user_id =
         #{toUserId} AND to_user_id
         = #{fromUserId})
-        <if test="lastId != null and lastId > 0">
-            AND id <![CDATA[<]]> #{lastId}
-        </if>
+        AND id <![CDATA[<]]> #{lastId}
         ORDER BY create_time DESC LIMIT 30
     </select>
 
@@ -38,7 +34,5 @@
         WHERE is_delete = 0
         <if test="messageType == 1 and id != 0">AND id = #{id}</if>
         <if test="messageType == 1 and id == 0">AND from_user_id = 0 AND to_user_id = #{myUserId}</if>
-        <if test="messageType == 2 and id != 0">AND from_user_id = #{id} AND to_user_id = #{myUserId}</if>
-        <if test="messageType == 2 and id == 0">AND from_user_id != 0 AND to_user_id = #{myUserId}</if>
     </update>
 </mapper>
