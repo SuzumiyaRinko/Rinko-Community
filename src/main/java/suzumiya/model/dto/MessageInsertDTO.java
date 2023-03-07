@@ -15,6 +15,8 @@ public class MessageInsertDTO implements Serializable {
     private Long toUserId;
     // 内容（长度不超过2000）
     private String content;
+    // 图片
+    private String pictures;
     // 是否为系统消息
     private Boolean isSystem = false;
 

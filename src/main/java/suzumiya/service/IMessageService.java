@@ -1,8 +1,10 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import suzumiya.model.dto.MessageDeleteDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.dto.MessageSelectDTO;
+import suzumiya.model.dto.MessageSetIsReadDTO;
 import suzumiya.model.pojo.Message;
 import suzumiya.model.vo.MessageSelectVO;
 
@@ -21,7 +23,7 @@ public interface IMessageService extends IService<Message> {
     /* 查询对话消息 */
     MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO);
 
-    void setIsRead(Integer messageType, Long id);
+    void setIsRead(MessageSetIsReadDTO messageSetIsReadDTO);
 
-    void deleteMessage(Integer messageType, Long id);
+    void deleteMessage(MessageDeleteDTO messageDeleteDTO);
 }

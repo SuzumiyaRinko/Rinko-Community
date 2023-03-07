@@ -3,8 +3,10 @@ package suzumiya.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import suzumiya.model.dto.MessageDeleteDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.dto.MessageSelectDTO;
+import suzumiya.model.dto.MessageSetIsReadDTO;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.MessageSelectVO;
@@ -51,29 +53,15 @@ public class MessageController {
         return ResponseGenerator.returnOK("消息查询成功", messages);
     }
 
-    /*
-        /message/setRead/{messageType}/{id}
-        例子：/message/setRead/1/1, 表示设置id=1的系统消息为"已读"
-             /message/setRead/1/0, 表示设置当前用户的所有系统消息为"已读"
-             /message/setRead/2/1, 表示设置fromUserId=1的unreadCount为0
-             /message/setRead/2/0, 表示设置当前用户的unreadCount为0
-    */
-    @PostMapping("/setIsRead/{messageType}/{id}")
-    public BaseResponse<Long> setIsRead(@PathVariable("messageType") Integer messageType, @PathVariable("id") Long id) {
-        messageService.setIsRead(messageType, id);
+    @PostMapping("/setIsRead")
+    public BaseResponse<Long> setIsRead(@RequestBody MessageSetIsReadDTO messageSetIsReadDTO) {
+        messageService.setIsRead(messageSetIsReadDTO);
         return ResponseGenerator.returnOK("设置isRead成功", null);
     }
 
-    /*
-        /message/deleteMessage/{messageType}/{id}
-        例子：/message/deleteMessage/1/1, 表示删除id=1的系统消息
-             /message/deleteMessage/1/0, 表示删除当前用户的所有系统消息
-             /message/deleteMessage/2/1, 表示删除from_user_id=1的私聊列表（暂时不显示）
-             /message/deleteMessage/2/0, 表示删除当前用户的所有私聊列表（暂时不显示）
-    */
-    @DeleteMapping("/deleteMessage/{messageType}/{id}")
-    public BaseResponse<Long> deleteMessage(@PathVariable("messageType") Integer messageType, @PathVariable("id") Long id) {
-        messageService.deleteMessage(messageType, id);
+    @DeleteMapping("/deleteMessage")
+    public BaseResponse<Long> deleteMessage(@RequestBody MessageDeleteDTO messageDeleteDTO) {
+        messageService.deleteMessage(messageDeleteDTO);
         return ResponseGenerator.returnOK("删除message成功", null);
     }
 }

@@ -1,5 +1,7 @@
 package suzumiya.controller;
 
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +25,7 @@ import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ServerEndpoint("/wsChat/{myUserId}")
@@ -71,8 +74,10 @@ public class WSChatController {
         Long toUserId = message.getToUserId();
 
         /* 对方未读数量+1 */
-        Long newUnreadCount = redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + toUserId, String.valueOf(myUserId), 1L);
-        message.setUnreadCount(newUnreadCount.intValue());
+        if (toUserId > 0) {
+            Long newUnreadCount = redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + toUserId, String.valueOf(myUserId), 1L);
+            message.setUnreadCount(newUnreadCount.intValue());
+        }
 
         /* 获取其他信息 */
         message.setFromUserId(myUserId);
@@ -84,16 +89,41 @@ public class WSChatController {
         messageInsertDTO.setFromUserId(myUserId);
         messageInsertDTO.setToUserId(toUserId);
         messageInsertDTO.setContent(message.getContent());
-        //TODO message.getPictures()
         messageInsertDTO.setIsSystem(false);
+
+        /* picturesSplit转pictures */
+        String[] picturesSplit = message.getPicturesSplit();
+        if (ObjectUtil.isNotEmpty(picturesSplit)) {
+            messageInsertDTO.setPictures(StrUtil.join("|", picturesSplit));
+        }
+
         messageService.saveMessage(messageInsertDTO);
 
-        /* 判断是否需要通过ws发送消息给对方 */
-        Session toSession = sessionMap.get(toUserId);
-        if (toSession != null) {
-            message.setContent(message.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
-            toSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
+
+        String content = message.getContent();
+        if (StrUtil.isNotBlank(content)) {
+            message.setContent(content.replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
         }
+
+        if (toUserId > 0) {
+            /* 私信 */
+            Session toSession = sessionMap.get(toUserId);
+            if (toSession != null) {
+                toSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
+            }
+        } else if (toUserId == 0) {
+            /* 公共聊天室 */
+            Set<Map.Entry<Long, Session>> entrySet = sessionMap.entrySet();
+            for (Map.Entry<Long, Session> entry : entrySet) {
+                Long userId = entry.getKey();
+                Session tmpSession = entry.getValue();
+                // 不用发给自己
+                if (!userId.equals(myUserId)) {
+                    tmpSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
+                }
+            }
+        }
+
     }
 
     // 连接关闭时被调用

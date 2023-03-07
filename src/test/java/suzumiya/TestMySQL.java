@@ -1,5 +1,6 @@
 package suzumiya;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.github.pagehelper.PageInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -7,13 +8,11 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import suzumiya.mapper.CommentMapper;
-import suzumiya.mapper.PostMapper;
-import suzumiya.mapper.TagMapper;
-import suzumiya.mapper.UserMapper;
+import suzumiya.mapper.*;
 import suzumiya.model.dto.CommentSelectDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Comment;
+import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
@@ -48,6 +47,9 @@ public class TestMySQL {
 
     @Autowired
     private CommentMapper commentMapper;
+
+    @Autowired
+    private MessageMapper messageMapper;
 
     @Autowired
     private PostMapper postMapper;
@@ -165,5 +167,13 @@ public class TestMySQL {
     @Test
     void getRolesByUserId() {
         System.out.println(userMapper.getRolesByUserId(3L));
+    }
+
+    @Test
+    void testUpdateWrapper() {
+        LambdaUpdateWrapper<Message> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.set(Message::getIsRead, true);
+        updateWrapper.eq(Message::getId, 1);
+        messageMapper.update(null, updateWrapper);
     }
 }

@@ -20,6 +20,8 @@ public class Message implements Serializable {
     private Long toUserId;
     // 内容（长度不超过2000）
     private String content;
+    // 图片
+    private String pictures;
     // 是否已读 0:未读 1:已读
     private Boolean isRead;
     // 目标id（可以为null）
@@ -49,6 +51,9 @@ public class Message implements Serializable {
     // 评论的用户的部分信息（id, nickname, avatar, roles）
     @TableField(exist = false)
     public User eventUser;
+    // 图片
+    @TableField(exist = false)
+    public String[] picturesSplit;
     // 未读消息条数
     @TableField(exist = false)
     private Integer unreadCount;
