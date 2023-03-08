@@ -11,6 +11,9 @@ import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
@@ -18,6 +21,7 @@ import suzumiya.constant.RedisConst;
 import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.MessageMapper;
 import suzumiya.mapper.PostMapper;
+import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.MessageInsertDTO;
@@ -31,6 +35,7 @@ import suzumiya.util.TestFTPUtils;
 
 import javax.annotation.Resource;
 import javax.mail.MessagingException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -48,6 +53,9 @@ public class MQConsumer {
 
     @Autowired
     private PostMapper postMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Autowired
     private CommentMapper commentMapper;
@@ -204,6 +212,38 @@ public class MQConsumer {
         redisTemplate.delete(RedisConst.POST_COLLECTION_LIST_KEY + postId);
         redisTemplate.delete(RedisConst.POST_COLLECTION_COUNT_KEY + postId);
     }
+
+    /* 监听公共聊天室unreadCount++ */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = MQConstant.MESSAGE_PUBLIC_UNREAD_QUEUE),
+            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
+            key = {MQConstant.MESSAGE_PUBLIC_UNREAD_KEY}
+    ))
+    public void listenPublicUnreadQueue(Long myUserId) {
+        List<Long> userIDs = userMapper.getAllUserId();
+
+        // userIDs > 2500之后, pipelined占优
+        if (userIDs.size() < 2500) {
+            for (Long userID : userIDs) {
+                if (!userID.equals(myUserId)) {
+                    redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + userID, "0", 1L);
+                }
+            }
+        } else {
+            redisTemplate.executePipelined(new RedisCallback<Object>() {
+                @Override
+                public Object doInRedis(RedisConnection connection) throws DataAccessException {
+                    for (Long userID : userIDs) {
+                        if (!userID.equals(myUserId)) {
+                            connection.hIncrBy((RedisConst.USER_UNREAD_KEY + userID).getBytes(StandardCharsets.UTF_8), "0".getBytes(StandardCharsets.UTF_8), 1L);
+                        }
+                    }
+                    return null;
+                }
+            });
+        }
+    }
+
 
     // DelayQueue：监听用户激活时间是否结束
 //    @RabbitListener(bindings = @QueueBinding(

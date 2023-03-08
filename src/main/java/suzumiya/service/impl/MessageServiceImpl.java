@@ -147,13 +147,13 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     @Override
     public Integer notReadCount(Long myUserId) {
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(RedisConst.USER_UNREAD_KEY + myUserId);
+        entries.remove("0");
         Integer unreadCount = 0;
         if (ObjectUtil.isNotEmpty(entries)) {
             for (Object value : entries.values()) {
                 unreadCount += (Integer) value;
             }
         }
-
         return unreadCount;
     }
 
@@ -184,6 +184,13 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             if (lastMessage4Public != null) {
                 if (StrUtil.isBlank(lastMessage4Public.getContent())) {
                     lastMessage4Public.setContent("[图片]");
+                }
+                // 获取未读条数
+                Object o = redisTemplate.opsForHash().get(RedisConst.USER_UNREAD_KEY + myUserId, "0");
+                if (o != null) {
+                    lastMessage4Public.setUnreadCount((Integer) o);
+                } else {
+                    lastMessage4Public.setUnreadCount(0);
                 }
             } else {
                 lastMessage4Public = new Message();
@@ -313,7 +320,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         Long targetId = messageDeleteDTO.getTargetId();
         Boolean isAll = messageDeleteDTO.getIsAll();
 
-        /* 删除消息 / 删除私聊列表 */
+        /* 删除系统消息 / 删除私聊列表 */
         if (messageType == 1) {
             if (!isAll) {
                 messageMapper.deleteById(targetId);

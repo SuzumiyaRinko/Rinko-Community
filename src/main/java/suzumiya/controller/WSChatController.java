@@ -7,13 +7,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Scope;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import suzumiya.constant.CommonConst;
+import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
 import suzumiya.mapper.MessageMapper;
+import suzumiya.mapper.UserMapper;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.pojo.Message;
 import suzumiya.service.IMessageService;
@@ -36,10 +39,12 @@ public class WSChatController {
 
     public static IMessageService messageService;
     public static IUserService userService;
+    public static UserMapper userMapper;
     public static MessageMapper messageMapper;
     public static Cache<String, Object> userCache; // Caffeine
     public static ObjectMapper objectMapper;
     public static RedisTemplate<String, Object> redisTemplate;
+    public static RabbitTemplate rabbitTemplate;
 
     static {
         // 获取IOC容器
@@ -47,10 +52,12 @@ public class WSChatController {
         // 获取SpringBean
         messageService = ioc.getBean(MessageServiceImpl.class);
         userService = ioc.getBean(UserServiceImpl.class);
+        userMapper = ioc.getBean(UserMapper.class);
         messageMapper = ioc.getBean(MessageMapper.class);
         userCache = ioc.getBean("userCache", Cache.class);
         objectMapper = ioc.getBean(ObjectMapper.class);
         redisTemplate = ioc.getBean("redisTemplate", RedisTemplate.class);
+        rabbitTemplate = ioc.getBean(RabbitTemplate.class);
     }
 
     // 记录所有当前在线连接
@@ -73,10 +80,15 @@ public class WSChatController {
 
         Long toUserId = message.getToUserId();
 
-        /* 对方未读数量+1 */
+        /* unreadCount */
         if (toUserId > 0) {
+            // 对方未读数量+1
             Long newUnreadCount = redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + toUserId, String.valueOf(myUserId), 1L);
+            // 设置消息unreadCount
             message.setUnreadCount(newUnreadCount.intValue());
+        } else {
+            // 全体publicUnreadCount++ (除自己外)
+            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.MESSAGE_PUBLIC_UNREAD_KEY, myUserId);
         }
 
         /* 获取其他信息 */
@@ -99,7 +111,6 @@ public class WSChatController {
 
         messageService.saveMessage(messageInsertDTO);
 
-
         String content = message.getContent();
         if (StrUtil.isNotBlank(content)) {
             message.setContent(content.replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
@@ -119,6 +130,13 @@ public class WSChatController {
                 Session tmpSession = entry.getValue();
                 // 不用发给自己
                 if (!userId.equals(myUserId)) {
+                    // 设置消息unreadCount
+                    Object o = redisTemplate.opsForHash().get(RedisConst.USER_UNREAD_KEY + userId, "0");
+                    if (o != null) {
+                        message.setUnreadCount((Integer) o);
+                    } else {
+                        message.setUnreadCount(0);
+                    }
                     tmpSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
                 }
             }

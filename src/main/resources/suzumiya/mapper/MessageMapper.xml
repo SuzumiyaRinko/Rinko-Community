@@ -13,7 +13,7 @@
         FROM tb_message
         WHERE is_delete = 0 AND from_user_id = 0 AND to_user_id = #{toUserId}
         AND id <![CDATA[<]]> #{lastId}
-        ORDER BY create_time DESC LIMIT 30
+        ORDER BY id DESC LIMIT 30
     </select>
 
     <!-- List<Message> getChatMessagesLtId(@Param("fromUserId") Long fromUserId, @Param("toUserId") Long toUserId, @Param("lastId") Long lastId) -->
@@ -31,6 +31,6 @@
             AND to_user_id = #{toUserId}
         </if>
         AND id <![CDATA[<]]> #{lastId}
-        ORDER BY create_time DESC LIMIT 30
+        ORDER BY id DESC LIMIT 20
     </select>
 </mapper>

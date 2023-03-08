@@ -176,4 +176,15 @@ public class TestMySQL {
         updateWrapper.eq(Message::getId, 1);
         messageMapper.update(null, updateWrapper);
     }
+
+    @Test
+    void testInsertPublicMessage() {
+        for (int i = 0; i < 100; i++) {
+            Message message = new Message();
+            message.setFromUserId(3L);
+            message.setToUserId(0L);
+            message.setContent(String.valueOf(i + 1));
+            messageMapper.insert(message);
+        }
+    }
 }

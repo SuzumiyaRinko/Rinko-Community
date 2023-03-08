@@ -42,4 +42,7 @@ public class MQConstant {
     // 发送消息
     public static final String MESSAGE_INSERT_QUEUE = "message.insert.queue";
     public static final String MESSAGE_INSERT_KEY = "message.insert";
+    // 公共聊天室未读数量
+    public static final String MESSAGE_PUBLIC_UNREAD_QUEUE = "message.public.unread.queue";
+    public static final String MESSAGE_PUBLIC_UNREAD_KEY = "message.public.unread";
 }

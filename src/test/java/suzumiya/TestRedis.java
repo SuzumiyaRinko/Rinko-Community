@@ -7,6 +7,8 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.*;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.RedisConst;
@@ -14,6 +16,7 @@ import suzumiya.mapper.PostMapper;
 import suzumiya.model.pojo.Post;
 import suzumiya.repository.PostRepository;
 
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -101,5 +104,29 @@ public class TestRedis {
     void testHasFollow() {
         Boolean result = redisTemplate.opsForSet().isMember("juejueSet", 1L);
         System.out.println("result: " + result);
+    }
+
+    @Test
+    void testPipeline() {
+        long time1 = System.currentTimeMillis();
+        redisTemplate.executePipelined(new RedisCallback<Object>() {
+            @Override
+            public Object doInRedis(RedisConnection connection) throws DataAccessException {
+                for (int i = 1; i <= 2500; i++) {
+                    connection.hIncrBy((RedisConst.USER_UNREAD_KEY + 3).getBytes(StandardCharsets.UTF_8), String.valueOf(i).getBytes(StandardCharsets.UTF_8), 1L);
+                }
+                return null;
+            }
+        });
+        long time2 = System.currentTimeMillis();
+
+        long time3 = System.currentTimeMillis();
+
+        for (int i = 1; i <= 2500; i++) {
+            redisTemplate.opsForHash().increment(RedisConst.USER_UNREAD_KEY + 3, String.valueOf(i), 1L);
+        }
+        long time4 = System.currentTimeMillis();
+
+        System.out.println((time2 - time1) + "ms " + (time4 - time3) + "ms");
     }
 }
