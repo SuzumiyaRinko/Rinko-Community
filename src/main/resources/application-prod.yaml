@@ -19,15 +19,22 @@ spring:
     username: root
     password: 123456
     virtual-host: /
+    listener:
+      simple:
+        prefetch: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+    publisher-returns: true
   elasticsearch:
     uris: http://suzumiya-es:9200
     username: elastic
     password: 123456
   mail:
-    host: smtp.qq.com
+    host: smtp.163.com
     port: 25
-    username: 3233219183
-    password: hvsgdxcoqmssdbfb
+    username: Txz2018911711@163.com
+    password: HEHYFEDCCTZKFCJH
     properties:
       smtp.ssl.enable: true # 启用SSL
       smtp.socketFactory.class: SSL_FACTORY # 使用JSSE的SSL
@@ -36,18 +43,21 @@ logging:
   level:
     suzumiya.aspect.ControllerAspect: debug
     suzumiya.controller.WSChatController: debug
+    suzumiya.service.impl.UserServiceImpl: debug
     suzumiya.mq.MQConsumer: debug
     suzumiya.job: debug
 #  pattern:
 #    dateformat: HH:mm:ss:SSS
 mybatis-plus:
-  mapper-locations: suzumiya/mapper
+  #  mapper-locations: suzumiya/mapper
   configuration:
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   type-aliases-package: suzumiya.model.pojo
 
 ftp:
-  ftp_address: suzumiya-ftp
-  ftp_port: 21
-  ftp_username: ftp
-  ftp_password: 123456
+  host: suzumiya-ftp
+  port: 21
+  username: ftp
+  password: 123456
+  encoding: UTF-8
