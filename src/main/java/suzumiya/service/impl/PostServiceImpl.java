@@ -309,7 +309,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 查缓存 */
         if (isCache) {
             // Caffeine
-            //TODO 这里不应该被注释
 //            Object t = postCache.getIfPresent(cacheKey);
 //            if (t != null) {
 //                BeanUtil.fillBeanWithMap((LinkedHashMap) t, postSearchVO, null);

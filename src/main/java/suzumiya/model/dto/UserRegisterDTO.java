@@ -11,5 +11,5 @@ public class UserRegisterDTO implements Serializable {
     private String password;
     private String confirmPassword;
     private String code; // 用户输入的验证码
-    private String correctCode; // 后台返回的验证码
+    private String uuid; // 该用户的唯一标识
 }

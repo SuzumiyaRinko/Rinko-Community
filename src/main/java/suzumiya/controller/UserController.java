@@ -10,7 +10,6 @@ import suzumiya.model.dto.UserUpdateDTO;
 import suzumiya.model.vo.BaseResponse;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
-import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
 import suzumiya.util.ResponseGenerator;
 
@@ -25,9 +24,6 @@ public class UserController {
 
     @Autowired
     private IUserService userService;
-
-    @Autowired
-    private IFileService fileService;
 
     @PostMapping("/login")
     public BaseResponse<String> login(@RequestBody UserLoginDTO userLoginDTO, HttpServletRequest request) {

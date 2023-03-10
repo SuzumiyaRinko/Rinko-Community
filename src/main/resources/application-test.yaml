@@ -63,9 +63,9 @@ ftp:
   encoding: UTF-8
 
 url:
-  prefix-activation-url: http://175.178.61.207/api-Rinko-Community/user/activation/
-  user-login-url: http://175.178.61.207/Rinko-Community
-  user-register-url: http://175.178.61.207/Rinko-Community
+  prefix-activation-url: http://175.178.244.172/api-Rinko-Community/user/activation/
+  user-login-url: http://175.178.244.172/Rinko-Community
+  user-register-url: http://175.178.244.172/Rinko-Community
 
 quartz:
   config-path: myQuartz_test.properties

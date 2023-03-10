@@ -41,6 +41,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -170,11 +171,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public void register(UserRegisterDTO userRegisterDTO) {
         /* 判断验证码是否正确 */
-        String correctCode = userRegisterDTO.getCorrectCode().toLowerCase();
+        String uuid = userRegisterDTO.getUuid();
+        String correctCode;
+        Object o = redisTemplate.opsForValue().get(RedisConst.USER_VERIFY_KEY + uuid);
+        if (o != null) {
+            correctCode = ((String) o).toLowerCase();
+        } else {
+            throw new RuntimeException("非法访问");
+        }
+
         String code = userRegisterDTO.getCode().toLowerCase();
         if (!StrUtil.equals(correctCode, code)) {
-            // 因为前端有检测，不正确说明用户绕过了前端，所以直接抛异常即可
-            throw new RuntimeException("验证码不正确");
+            throw new RuntimeException("非法访问");
         }
 
         /* 判断注册的账号密码是否符合要求 */
@@ -187,7 +195,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         /* 判断password和confirmPassword是否一致 */
         String confirmPassword = userRegisterDTO.getConfirmPassword();
         if (!StrUtil.equals(password, confirmPassword)) {
-            throw new RuntimeException("两次密码输入不一致");
+            throw new RuntimeException("非法访问");
         }
 
         /* 判断当前用户名是否已经存在 */
@@ -205,7 +213,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         newUser.setPassword(encodePassword);
         newUser.setSalt(salt);
 
-        String uuid = UUID.randomUUID().toString();
+        uuid = UUID.randomUUID().toString();
         newUser.setActivationUUID(uuid);
         newUser.setNickname("user_" + uuid.substring(0, 8));
         newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
@@ -262,11 +270,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Override
     public User getSimpleUserById(Long userId) {
         String cacheKey = CacheConst.CACHE_USER_KEY + userId;
-        return (User) userCache.get(cacheKey, (xx) -> {
-            User user = userMapper.getSimpleUserById(userId);
+        User user = new User();
+
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
+        if (ObjectUtil.isNotEmpty(entries)) {
+            BeanUtil.fillBeanWithMap(entries, user, null);
+        } else {
+            Map<String, Object> valueMap = new HashMap<>();
+            user = userMapper.getSimpleUserById(userId);
             user.setRoles(userMapper.getRolesByUserId(userId));
-            return user;
-        });
+
+            // 缓存
+            BeanUtil.beanToMap(user, valueMap, true, null);
+            redisTemplate.opsForHash().putAll(cacheKey, valueMap);
+        }
+
+        // 重置TTL
+        redisTemplate.expire(cacheKey, Duration.ofMinutes(3L));
+
+        return user;
     }
 
     @Override
@@ -385,7 +407,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userMapper.updateById(t);
 
         /* 清除该用户的缓存（异步） */
-        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
+        redisTemplate.delete(CacheConst.CACHE_USER_KEY + myUserId);
 
         return filePath;
     }
@@ -397,6 +419,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (StrUtil.isBlank(nickname) || nickname.length() > 20) {
             throw new RuntimeException("名称长度不符合要求");
         }
+
         /* 存储至MySQL */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();
@@ -409,7 +432,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         userMapper.updateById(t);
 
         /* 清除Caffeine缓存 */
-        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
+        redisTemplate.delete(CacheConst.CACHE_USER_KEY + myUserId);
     }
 
     private boolean checkLogin(Serializable userId) {

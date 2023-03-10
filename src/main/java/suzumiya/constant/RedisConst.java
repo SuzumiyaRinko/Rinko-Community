@@ -9,6 +9,8 @@ public class RedisConst {
     public static final String USER_BAN_KEY = "user:ban:"; // user:ban:{ip}
     // 密码错误的重试次数
     public static final String LOGIN_RETRY_USER_KEY = "login:retry:user:"; // login:retry:user:{ip}
+    // 验证码
+    public static final String USER_VERIFY_KEY = "user:verify:"; // user:verify:{uuid}
     // 已经登录了的用户的用户信息
     public static final String LOGIN_USER_KEY = "login:user:"; // login:retry:user:{userId}
     // 需要在30mins内激活账号的userId
