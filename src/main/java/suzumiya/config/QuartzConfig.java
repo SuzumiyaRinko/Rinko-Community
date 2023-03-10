@@ -3,6 +3,7 @@ package suzumiya.config;
 import org.quartz.Scheduler;
 import org.quartz.ee.servlet.QuartzInitializerListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.PropertiesFactoryBean;
 import org.springframework.boot.autoconfigure.quartz.SchedulerFactoryBeanCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -27,11 +28,18 @@ public class QuartzConfig implements SchedulerFactoryBeanCustomizer {
         return schedulerFactoryBean;
     }
 
+    public static String quartzConfigPath;
+
+    @Value("${quartz.config-path}")
+    public void setQuartzConfigPath(String quartzConfigPath) {
+        QuartzConfig.quartzConfigPath = quartzConfigPath;
+    }
+
     @Bean
     public Properties properties() throws IOException {
         PropertiesFactoryBean propertiesFactoryBean = new PropertiesFactoryBean();
         // 对quartz.properties文件进行读取
-        propertiesFactoryBean.setLocation(new ClassPathResource("myQuartz.properties"));
+        propertiesFactoryBean.setLocation(new ClassPathResource(QuartzConfig.quartzConfigPath));
         // 在quartz.properties中的属性被读取并注入后再初始化对象
         propertiesFactoryBean.afterPropertiesSet();
         return propertiesFactoryBean.getObject();
