@@ -32,8 +32,15 @@ public class UserController {
     @PostMapping("/login")
     public BaseResponse<String> login(@RequestBody UserLoginDTO userLoginDTO, HttpServletRequest request) {
         /* 用户登录 */
-        String token = userService.login(userLoginDTO, request);
+        String token = userService.login(userLoginDTO);
         return ResponseGenerator.returnOK("用户登录成功", token);
+    }
+
+    @PostMapping("/loginAnonymously")
+    public BaseResponse<String> loginAnonymously() {
+        /* 用户匿名登录 */
+        String token = userService.loginAnonymously();
+        return ResponseGenerator.returnOK("用户匿名登录成功", token);
     }
 
     @PostMapping("/logout")

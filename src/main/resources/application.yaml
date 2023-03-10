@@ -9,4 +9,5 @@ spring:
       max-request-size: 20MB
 server:
   servlet:
-    context-path: /Rinko-Community
+    session:
+      tracking-modes: cookie

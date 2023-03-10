@@ -187,4 +187,9 @@ public class TestMySQL {
             messageMapper.insert(message);
         }
     }
+
+    @Test
+    void testCommonConst() {
+
+    }
 }

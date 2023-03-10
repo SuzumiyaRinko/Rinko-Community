@@ -16,15 +16,12 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 import suzumiya.constant.CacheConst;
 import suzumiya.constant.CommonConst;
@@ -40,7 +37,6 @@ import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.Serializable;
@@ -84,15 +80,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public String login(UserLoginDTO userLoginDTO, HttpServletRequest request) {
-        /* 判断该ip是否暂时不允许登录（账号密码连续输错5次） */
-        String ip = request.getRemoteHost().replaceAll(":", "-"); // 原ip大概是 0:0:0:0:0:0:0:1
-        Object cnt = redisTemplate.opsForValue().get(RedisConst.LOGIN_RETRY_USER_KEY + ip);
-        if (cnt != null && (int) cnt % 5 == 0) {
-            redisTemplate.expire(RedisConst.LOGIN_RETRY_USER_KEY + ip, 30L, TimeUnit.SECONDS);
-            throw new RuntimeException("请在30s后再重新尝试");
-        }
-
+    public String login(UserLoginDTO userLoginDTO) {
         /* 判断注册的账号密码是否符合要求 */
         String username = userLoginDTO.getUsername();
         String password = userLoginDTO.getPassword();
@@ -119,15 +107,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         try {
             // SS返回UserDetail
             // 这里会调用UserDetail.getAuthorities()方法，但是登录时authoritiesStr为空，所以此时UserDetail.getAuthorities()返回null
-            authentication = authenticationManager.authenticate(authenticationToken);
-        } catch (AuthenticationException ex) {
-            redisTemplate.opsForValue().increment(RedisConst.LOGIN_RETRY_USER_KEY + ip, 1L);
-            redisTemplate.expire(RedisConst.LOGIN_RETRY_USER_KEY + ip, 30L, TimeUnit.SECONDS);
-            throw new RuntimeException("账号或密码错误");
+            authentication = authenticationManager.authenticate(authenticationToken); // 会调用loadUserByUsername
         } catch (Exception ex) {
             ex.printStackTrace();
-            throw new RuntimeException("登录接口异常");
+            throw new RuntimeException("账号或密码错误");
         }
+
 
         /* 查询用户权限 */
         User authenticatedUser = (User) authentication.getPrincipal();
@@ -152,6 +137,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
+    public String loginAnonymously() {
+        /* 新增用户 */
+        String nickname = "user_" + UUID.randomUUID().toString().substring(0, 6); // [0, 6)
+
+        User newUser = new User();
+        newUser.setNickname(nickname);
+        newUser.setActivation(2);
+        newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
+        userMapper.insert(newUser);
+
+        /* 把用户信息存放到Redis中，TTL为30mins */
+        String key = RedisConst.LOGIN_USER_KEY + newUser.getId();
+        Map<String, Object> value = new HashMap<>();
+        BeanUtil.beanToMap(newUser, value, true, null);
+        redisTemplate.opsForHash().putAll(key, value);
+        redisTemplate.expire(key, 30, TimeUnit.MINUTES);
+
+        /* 生成并返回Jwt */
+        HashMap<String, Object> payload = new HashMap<>();
+        payload.put("userId", newUser.getId());
+        return JWTUtil.createToken(payload, TOKEN_KEY.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
     public void logout() {
         /* 删除Redis中的用户信息 */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -160,16 +169,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public void register(UserRegisterDTO userRegisterDTO) {
-        /* 判断该IP 24小时内的注册次数 */
-        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        assert requestAttributes != null;
-        HttpServletRequest request = requestAttributes.getRequest();
-        String ip = request.getRemoteHost().replaceAll(":", "-"); // 原ip大概是 0:0:0:0:0:0:0:1
-        Object t = redisTemplate.opsForValue().get(RedisConst.REGISTER_TIMES_KEY + ip);
-        if (t != null && (int) t % 5 == 0) {
-            throw new RuntimeException("当天注册次数已到达5次，请在24小时后再尝试注册");
-        }
-
         /* 判断验证码是否正确 */
         String correctCode = userRegisterDTO.getCorrectCode().toLowerCase();
         String code = userRegisterDTO.getCode().toLowerCase();
@@ -211,14 +210,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         newUser.setNickname("user_" + uuid.substring(0, 8));
         newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
         userMapper.insert(newUser);
-
-        /* 记录该IP 24小时内的注册次数 */
-        if (Boolean.FALSE.equals(redisTemplate.hasKey(RedisConst.REGISTER_TIMES_KEY + ip))) {
-            redisTemplate.opsForValue().increment(RedisConst.REGISTER_TIMES_KEY + ip); // 注册次数+1
-            redisTemplate.expire(RedisConst.REGISTER_TIMES_KEY + ip, 24L, TimeUnit.HOURS);
-        } else {
-            redisTemplate.opsForValue().increment(RedisConst.REGISTER_TIMES_KEY + ip); // 注册次数+1
-        }
 
         /* 30mins激活时间（异步） */
         /* 发送邮件到用户邮箱（异步） */

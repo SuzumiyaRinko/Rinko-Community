@@ -44,8 +44,9 @@ public class SecurityConfig {
                 .authorizeRequests(authorize -> authorize
 //                        .antMatchers("/test/**").hasAnyAuthority(SecurityConst.SYS_BOOK)
                         .antMatchers("/verifyCode").permitAll()
-                        .antMatchers("/user/login").anonymous()
                         .antMatchers("/user/register").anonymous()
+                        .antMatchers("/user/login").anonymous()
+                        .antMatchers("/user/loginAnonymously").anonymous()
                         .antMatchers("/user/activation").anonymous()
                         .anyRequest().authenticated()) // 登录用户和匿名用户都可以访问
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

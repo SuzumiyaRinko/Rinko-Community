@@ -9,14 +9,16 @@ import suzumiya.model.pojo.User;
 import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public interface IUserService extends IService<User> {
 
     /* 用户登录 */
-    String login(UserLoginDTO userLoginDTO, HttpServletRequest request);
+    String login(UserLoginDTO userLoginDTO);
+
+    /* 用户匿名登录 */
+    String loginAnonymously();
 
     /* 用户登出 */
     void logout();

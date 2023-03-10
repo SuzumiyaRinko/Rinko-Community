@@ -71,12 +71,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- mybatis数据库字段类型映射 -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.mybatis</groupId>-->
-        <!--            <artifactId>mybatis-typehandlers-jsr310</artifactId>-->
-        <!--            <version>1.0.1</version>-->
-        <!--        </dependency>-->
         <!-- SpringSecurity -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -87,16 +81,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
-        <!-- 使用Redis的话，要添加这个依赖? -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.commons</groupId>-->
-        <!--            <artifactId>commons-pool2</artifactId>-->
-        <!--        </dependency>-->
-        <!-- ElasticSearch客户端 -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.elasticsearch.client</groupId>-->
-        <!--            <artifactId>elasticsearch-rest-high-level-client</artifactId>-->
-        <!--        </dependency>-->
         <!-- ElasticSearch -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -112,18 +96,6 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
-        <!-- jwt -->
-        <!--        <dependency>-->
-        <!--            <groupId>io.jsonwebtoken</groupId>-->
-        <!--            <artifactId>jjwt</artifactId>-->
-        <!--            <version>0.9.1</version>-->
-        <!--        </dependency>-->
-        <!-- 导入javax.xml.bind.DatatypeConverter -->
-        <!--        <dependency>-->
-        <!--            <groupId>javax.xml.bind</groupId>-->
-        <!--            <artifactId>jaxb-api</artifactId>-->
-        <!--            <version>2.3.1</version>-->
-        <!--        </dependency>-->
         <!-- Quartz -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -197,4 +169,15 @@
             <optional>true</optional>
         </dependency>
     </dependencies>
+
+
+    <build>
+        <finalName>api-Rinko-Community</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>

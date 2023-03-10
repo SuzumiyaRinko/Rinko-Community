@@ -55,5 +55,7 @@ public class Application {
         // 定时清除MySQL中已被逻辑删除的数据（一天一次）
         QuartzUtils.addjob("tableLogicDataClearJob", "tableLogicDataClearJobGroup", null,
                 "tableLogicDataClearJobTrigger", "tableLogicDataClearJobTriggerGroup", "0 0 0 1/1 * ?", TableLogicDataClearJob.class);
+
+        System.out.println("api started successfully.");
     }
 }

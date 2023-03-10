@@ -51,12 +51,13 @@ public class JwtFilter extends OncePerRequestFilter {
     private void init() {
         anonymousURIs.add(SERVLET_CONTEXT + "/verifyCode");
         anonymousURIs.add(SERVLET_CONTEXT + "/user/login");
+        anonymousURIs.add(SERVLET_CONTEXT + "/user/loginAnonymously");
         anonymousURIs.add(SERVLET_CONTEXT + "/user/register");
         anonymousURIs.add(SERVLET_CONTEXT + "/user/activation");
     }
 
     private static final String TOKEN_KEY = "114514"; // Token密钥
-    private static final String SERVLET_CONTEXT = "/Rinko-Community";
+    private static final String SERVLET_CONTEXT = "";
     private static final String WSCHAT_URI_PREFIX = SERVLET_CONTEXT + "/wsChat"; // wsChat的Uri
 
     @Override
@@ -79,6 +80,7 @@ public class JwtFilter extends OncePerRequestFilter {
         String token;
         if (uri.startsWith(WSCHAT_URI_PREFIX)) {
             token = request.getHeader("Sec-WebSocket-Protocol");
+            wsFlag = true;
         } else {
             token = request.getHeader("Authorization");
         }
@@ -113,7 +115,7 @@ public class JwtFilter extends OncePerRequestFilter {
         redisTemplate.expire(RedisConst.LOGIN_USER_KEY + userId, 30L, TimeUnit.MINUTES);
 
         /* 如果是ws请求，检验路径myUserId是否和Token中的userId相同 */
-        if (uri.startsWith(WSCHAT_URI_PREFIX)) {
+        if (wsFlag) {
             String[] split = uri.split("/");
             String wsUserId = split[split.length - 1];
             if (!StrUtil.equals(String.valueOf(userId), wsUserId)) {
@@ -127,7 +129,7 @@ public class JwtFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
 
         /* 如果是ws请求，返回时要把token放到Sec-WebSocket-Protocol中 */
-        if (uri.startsWith(WSCHAT_URI_PREFIX)) {
+        if (wsFlag) {
             response.setHeader("Sec-WebSocket-Protocol", token);
         }
     }

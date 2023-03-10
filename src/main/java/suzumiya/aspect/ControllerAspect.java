@@ -9,12 +9,9 @@ import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 import suzumiya.model.pojo.User;
 import suzumiya.model.vo.BaseResponse;
 
-import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -30,18 +27,12 @@ public class ControllerAspect {
     /* 统一打印日志 */
     @Before("controllerPointcut()")
     public void log(JoinPoint joinPoint) {
-        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-        assert requestAttributes != null;
-        HttpServletRequest request = requestAttributes.getRequest();
-        String ip = request.getRemoteHost();
         String time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now());
 
         Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String username =  (obj instanceof User) ? ((User) obj).getUsername() : "null"; // instanceof 本来就会判断obj是否为null
 
-        log.debug("IP: {}, username: {}, time: {}, API: {}", ip, username, time, joinPoint.getSignature().getDeclaringTypeName() + "." + joinPoint.getSignature().getName());
-//        log.info("typeName: {}", joinPoint.getSignature().getDeclaringTypeName());
-//        log.info("args: {}", (Object[]) ((MethodSignature)joinPoint.getSignature()).getParameterTypes());
+        log.debug("username: {}, time: {}, API: {}", username, time, joinPoint.getSignature().getDeclaringTypeName() + "." + joinPoint.getSignature().getName());
     }
 
     /* 记录请求共消耗的时间 */

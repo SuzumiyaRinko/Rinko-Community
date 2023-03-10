@@ -61,3 +61,8 @@ ftp:
   username: ftp
   password: 123456
   encoding: UTF-8
+
+url:
+  prefix-activation-url: http://localhost:8080/Rinko-Community/user/activation/
+  user-login-url: http://localhost/
+  user-register-url: http://localhost/

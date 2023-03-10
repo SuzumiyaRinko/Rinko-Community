@@ -30,7 +30,7 @@ public class User implements UserDetails, Serializable {
     private String salt;
     // 性别 1:男 2:女
     private Integer gender;
-    // 当前激活状态 0:未激活 1:激活
+    // 当前激活状态 0:未激活 1:激活 2:匿名
     private Integer activation;
     // 激活时的UUID
     @TableField("activation_UUID")

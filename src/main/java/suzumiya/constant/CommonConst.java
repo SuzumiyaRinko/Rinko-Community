@@ -1,5 +1,6 @@
 package suzumiya.constant;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +17,25 @@ public class CommonConst {
 
     /* 服务层 */
     // User
-    public static final String PREFIX_ACTIVATION_URL = "http://localhost:8080/Rinko-Community/user/activation/";
-    public static final String USER_LOGIN_URL = "http://localhost/";
-    public static final String USER_REGISTER_URL = "http://localhost/";
+    public static String PREFIX_ACTIVATION_URL;
+    public static String USER_LOGIN_URL;
+    public static String USER_REGISTER_URL;
+
+    @Value("${url.prefix-activation-url}")
+    public void setPREFIX_ACTIVATION_URL(String PREFIX_ACTIVATION_URL) {
+        CommonConst.PREFIX_ACTIVATION_URL = PREFIX_ACTIVATION_URL;
+    }
+
+    @Value("${url.user-login-url}")
+    public void setUSER_LOGIN_URL(String USER_LOGIN_URL) {
+        CommonConst.USER_LOGIN_URL = USER_LOGIN_URL;
+    }
+
+    @Value("${url.user-register-url}")
+    public void setUSER_REGISTER_URL(String USER_REGISTER_URL) {
+        CommonConst.USER_REGISTER_URL = USER_REGISTER_URL;
+    }
+
     public static final String MAIL_FROM = "Txz2018911711@163.com";
     public static final String DEFAULT_AVATAR = "/default_avatar.png";
     // Comment
