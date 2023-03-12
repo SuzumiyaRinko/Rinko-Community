@@ -1,6 +1,7 @@
 package suzumiya;
 
-import cn.hutool.core.lang.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestMain {
 
@@ -14,8 +15,23 @@ public class TestMain {
 //            System.out.print(s.charAt(idx));
 //        }
 //        System.out.println(UUID.randomUUID());
-        String uuid = "1";
-        uuid = UUID.randomUUID().toString();
-        System.out.println();
+
+//        String uuid = "1";
+//        uuid = UUID.randomUUID().toString();
+//        System.out.println();
+
+        String str = "{\"words\":[\"习近平\",\"泽东\",\"毛泽东\"],\"msg\":\"政治敏感\",\"level\":3},{\"words\":[\"cnm\"],\"msg\":\"低俗辱骂\",\"level\":5}";
+        str = str.replaceAll("},\\{", "}{");
+        List<String> jsonStrs = new ArrayList<>();
+        int index;
+        while ((index = str.indexOf("}")) != -1) {
+            String t = str.substring(0, index + 1);
+            str = str.substring(index + 1);
+            jsonStrs.add(t);
+        }
+
+        for (String jsonStr : jsonStrs) {
+            System.out.println(jsonStr);
+        }
     }
 }

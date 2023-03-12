@@ -5,6 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -29,7 +30,7 @@ import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
 import suzumiya.service.IUserService;
-import suzumiya.util.WordTreeUtils;
+import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -59,7 +60,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
     private CommentMapper commentMapper;
 
     @Override
-    public Long comment(CommentInsertDTO commentInsertDTO) {
+    public Long comment(CommentInsertDTO commentInsertDTO) throws JsonProcessingException {
         /* 判断内容长度 */
         if (commentInsertDTO.getContent().length() > 1000) {
             throw new RuntimeException("内容长度超出限制");
@@ -68,7 +69,7 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Comment comment = new Comment();
 
         /* 过滤敏感词 */
-        comment.setContent(WordTreeUtils.replaceAllSensitiveWords(commentInsertDTO.getContent()));
+        comment.setContent(SuzumiyaUtils.replaceAllSensitiveWords(commentInsertDTO.getContent()));
 
         /* 清除HTML标记 */
         comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));

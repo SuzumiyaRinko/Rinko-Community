@@ -7,6 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.jwt.JWTUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -35,13 +36,13 @@ import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
 import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
+import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -272,21 +273,37 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         String cacheKey = CacheConst.CACHE_USER_KEY + userId;
         User user = new User();
 
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
-        if (ObjectUtil.isNotEmpty(entries)) {
-            BeanUtil.fillBeanWithMap(entries, user, null);
-        } else {
-            Map<String, Object> valueMap = new HashMap<>();
-            user = userMapper.getSimpleUserById(userId);
-            user.setRoles(userMapper.getRolesByUserId(userId));
-
-            // 缓存
-            BeanUtil.beanToMap(user, valueMap, true, null);
-            redisTemplate.opsForHash().putAll(cacheKey, valueMap);
+        /* 多级缓存 */
+        boolean flag = false;
+        // Caffeine
+        Object t = userCache.getIfPresent(cacheKey);
+        if (t != null) {
+            BeanUtil.fillBeanWithMap((Map<?, ?>) t, user, null);
+            flag = true;
         }
 
-        // 重置TTL
-        redisTemplate.expire(cacheKey, Duration.ofMinutes(3L));
+        // Redis
+        if (!flag) {
+            Map<Object, Object> entries = redisTemplate.opsForHash().entries(cacheKey);
+            if (ObjectUtil.isNotEmpty(entries)) {
+                BeanUtil.fillBeanWithMap(entries, user, null);
+                flag = true;
+            }
+        }
+
+        // MySQL
+        if (!flag) {
+            user = userMapper.getSimpleUserById(userId);
+            user.setRoles(userMapper.getRolesByUserId(userId));
+        }
+
+        /* 构建或刷新Caffeine和Redis缓存（异步） */
+        CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
+        cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
+        cacheUpdateDTO.setKey(cacheKey);
+        cacheUpdateDTO.setValue(user);
+        cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_USER);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
 
         return user;
     }
@@ -408,17 +425,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         /* 清除该用户的缓存（异步） */
         redisTemplate.delete(CacheConst.CACHE_USER_KEY + myUserId);
+        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
 
         return filePath;
     }
 
     @Override
-    public void updateUserInfo(UserUpdateDTO userUpdateDTO) {
+    public void updateUserInfo(UserUpdateDTO userUpdateDTO) throws JsonProcessingException {
         String nickname = userUpdateDTO.getNickname();
         Integer gender = userUpdateDTO.getGender();
         if (StrUtil.isBlank(nickname) || nickname.length() > 20) {
             throw new RuntimeException("名称长度不符合要求");
         }
+
+        /* 过滤敏感词 */
+        userUpdateDTO.setNickname(SuzumiyaUtils.replaceAllSensitiveWords(userUpdateDTO.getNickname()));
 
         /* 存储至MySQL */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -433,6 +454,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         /* 清除Caffeine缓存 */
         redisTemplate.delete(CacheConst.CACHE_USER_KEY + myUserId);
+        userCache.invalidate(CacheConst.CACHE_USER_KEY + myUserId);
     }
 
     private boolean checkLogin(Serializable userId) {

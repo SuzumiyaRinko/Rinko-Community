@@ -1,5 +1,6 @@
 package suzumiya.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class CommentController {
     private ICommentService commentService;
 
     @PostMapping
-    public BaseResponse<Long> comment(@RequestBody CommentInsertDTO commentInsertDTO) {
+    public BaseResponse<Long> comment(@RequestBody CommentInsertDTO commentInsertDTO) throws JsonProcessingException {
         Long commentId = commentService.comment(commentInsertDTO);
         return ResponseGenerator.returnOK("评论成功", commentId);
     }

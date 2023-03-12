@@ -1,5 +1,6 @@
 package suzumiya.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +23,7 @@ public class PostController {
     private IPostService postService;
 
     @PostMapping("/insert")
-    public BaseResponse<Long> insert(@RequestBody PostInsertDTO postInsertDTO) {
+    public BaseResponse<Long> insert(@RequestBody PostInsertDTO postInsertDTO) throws JsonProcessingException {
         Long postId = postService.insert(postInsertDTO);
         return ResponseGenerator.returnOK("新增post成功", postId);
     }

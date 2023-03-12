@@ -36,13 +36,15 @@ public class CacheServiceImpl implements ICacheService {
         Object value = cacheUpdateDTO.getValue();
         int cacheType = cacheUpdateDTO.getCacheType();
         int caffeineType = cacheUpdateDTO.getCaffeineType();
-        Duration duration = cacheUpdateDTO.getDuration();
+        Duration duration;
 
         // Caffeine
         if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
             userCache.put(key, value);
+            duration = CacheConst.CACHE_REDIS_USER_TTL();
         } else {
             postCache.put(key, value);
+            duration = CacheConst.CACHE_REDIS_POST_TTL();
         }
 
         // Redis

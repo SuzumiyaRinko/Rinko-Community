@@ -5,15 +5,12 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import suzumiya.constant.CacheConst;
 import suzumiya.job.PostScoreUpdateJob;
 import suzumiya.job.TableLogicDataClearJob;
 import suzumiya.mapper.UserMapper;
-import suzumiya.model.pojo.User;
 import suzumiya.util.QuartzUtils;
 
 import javax.annotation.Resource;
-import java.util.List;
 
 @SpringBootApplication
 @MapperScan(basePackages = "suzumiya.mapper")
@@ -41,12 +38,12 @@ public class Application {
         // see Netty4Utils.setAvailableProcessors()
         System.setProperty("es.set.netty.runtime.available.processors", "false");
 
-        /* 缓存预热 */
-        List<User> simpleUsers = userMapper.getSimpleUsers();
-        for (User simpleUser : simpleUsers) {
-            simpleUser.setRoles(userMapper.getRolesByUserId(simpleUser.getId()));
-            userCache.put(CacheConst.CACHE_USER_KEY + simpleUser.getId(), simpleUser);
-        }
+        /* SimpleUser缓存预热 */
+//        List<User> simpleUsers = userMapper.getSimpleUsers();
+//        for (User simpleUser : simpleUsers) {
+//            simpleUser.setRoles(userMapper.getRolesByUserId(simpleUser.getId()));
+//            userCache.put(CacheConst.CACHE_USER_KEY + simpleUser.getId(), simpleUser);
+//        }
 
         /* 发布任务 */
         // 定时刷新post分数（一个小时一次）

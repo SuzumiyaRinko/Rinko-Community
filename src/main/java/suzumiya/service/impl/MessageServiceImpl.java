@@ -7,6 +7,7 @@ import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ import suzumiya.model.vo.MessageSelectVO;
 import suzumiya.service.IMessageService;
 import suzumiya.service.IUserService;
 import suzumiya.util.RedisUtils;
-import suzumiya.util.WordTreeUtils;
+import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -63,7 +64,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
     private MessageMapper messageMapper;
 
     @Override
-    public void saveMessage(MessageInsertDTO messageInsertDTO) {
+    public void saveMessage(MessageInsertDTO messageInsertDTO) throws JsonProcessingException {
         Message message = new Message();
         Long toUserId = messageInsertDTO.getToUserId();
         message.setToUserId(toUserId);
@@ -120,7 +121,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
             if (StrUtil.isNotBlank(content)) {
                 /* 过滤敏感词 */
-                content = WordTreeUtils.replaceAllSensitiveWords(content);
+                content = SuzumiyaUtils.replaceAllSensitiveWords(content);
                 /* 清除HTML标记 */
                 content = HtmlUtil.cleanHtmlTag(messageInsertDTO.getContent());
                 /* 换行符转换 */

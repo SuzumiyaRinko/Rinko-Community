@@ -1,6 +1,7 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
 import suzumiya.model.pojo.Post;
@@ -12,7 +13,7 @@ import java.util.Set;
 public interface IPostService extends IService<Post> {
 
     /* 新增 */
-    Long insert(PostInsertDTO postInsertDTO);
+    Long insert(PostInsertDTO postInsertDTO) throws JsonProcessingException;
 
     /* 删除 */
     void delete(Long postId);

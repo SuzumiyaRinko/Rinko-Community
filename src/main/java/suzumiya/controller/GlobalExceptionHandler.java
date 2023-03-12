@@ -13,6 +13,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public BaseResponse<Object> exceptionHandler(Exception ex) {
         log.error("控制层抛出异常：{}", ex.getMessage());
+        ex.printStackTrace();
         return ResponseGenerator.returnError(-1, ex.getMessage());
     }
 }

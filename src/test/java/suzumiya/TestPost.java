@@ -1,5 +1,6 @@
 package suzumiya;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -25,7 +26,7 @@ public class TestPost {
     private IPostService postService;
 
     @Test
-    void testPostInsert() throws InterruptedException {
+    void testPostInsert() throws InterruptedException, JsonProcessingException {
         for (int i = 1; i <= 50; i++) {
             PostInsertDTO postInsertDTO = new PostInsertDTO();
             postInsertDTO.setTitle("坤坤打飞机后的产后护理");

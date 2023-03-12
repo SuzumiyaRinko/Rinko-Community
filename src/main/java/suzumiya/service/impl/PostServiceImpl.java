@@ -8,6 +8,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.common.lucene.search.function.CombineFunction;
@@ -49,11 +50,10 @@ import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 import suzumiya.util.IKAnalyzerUtils;
 import suzumiya.util.RedisUtils;
-import suzumiya.util.WordTreeUtils;
+import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Field;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -101,7 +101,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 //    private final String[] aggsResultNames = {"标签"};
 
     @Override
-    public Long insert(PostInsertDTO postInsertDTO) {
+    public Long insert(PostInsertDTO postInsertDTO) throws JsonProcessingException {
         /* 判断标题和内容长度 */
         String title = postInsertDTO.getTitle();
         if (title.length() < 5 || title.length() > 39 || postInsertDTO.getContent().length() > 2000) {
@@ -111,8 +111,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         Post post = new Post();
 
         /* 过滤敏感词 */
-        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
-        post.setContent(WordTreeUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
+        post.setTitle(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
+        post.setContent(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
 
         /* 清除HTML标记 */
         post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
@@ -278,8 +278,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
-        log.debug("PostServiceImpl.search.postSearchDTO: {}", postSearchDTO);
-
         PostSearchVO postSearchVO = new PostSearchVO();
 
         String searchKey = postSearchDTO.getSearchKey();
@@ -313,18 +311,24 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         /* 查缓存 */
         if (isCache) {
             // Caffeine
-//            Object t = postCache.getIfPresent(cacheKey);
-//            if (t != null) {
-//                BeanUtil.fillBeanWithMap((LinkedHashMap) t, postSearchVO, null);
-//                flag = true;
-//            }
+            Object t = postCache.getIfPresent(cacheKey);
+            if (t != null) {
+                Map<Object, Object> tt = (Map<Object, Object>) t;
+                postSearchVO.setTotal((Integer) tt.get("total"));
+                Collection<Post> collect = (Collection<Post>) ((Collection) tt.get("data")).stream().map((postMap) -> {
+                    Post post = new Post();
+                    BeanUtil.fillBeanWithMap((Map<?, ?>) postMap, post, null);
+                    return post;
+                }).collect(Collectors.toList());
+                postSearchVO.setData(collect);
+                flag = true;
+            }
 
             // Redis
-            Map<Object, Object> t = redisTemplate.opsForHash().entries(cacheKey);
-            if (ObjectUtil.isNotEmpty(t)) {
-                postSearchVO.setTotal((Integer) t.get("total"));
-                log.debug("search.redis.postSearchVO: {}, pageNum: {}", postSearchVO, pageNum);
-                Collection<Post> collect = (Collection<Post>) ((Collection) t.get("data")).stream().map((postMap) -> {
+            Map<Object, Object> tt = redisTemplate.opsForHash().entries(cacheKey);
+            if (ObjectUtil.isNotEmpty(tt)) {
+                postSearchVO.setTotal((Integer) tt.get("total"));
+                Collection<Post> collect = (Collection<Post>) ((Collection) tt.get("data")).stream().map((postMap) -> {
                     Post post = new Post();
                     BeanUtil.fillBeanWithMap((Map<?, ?>) postMap, post, null);
                     return post;
@@ -345,14 +349,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         }
 
         /* 判断是否需要缓存该List<Post>对象（异步） */
-        if (isCache) {
+        if (isCache && postSearchVO.getData().size() > 0) {
             /* 构建或刷新Caffeine和Redis缓存（异步） */
             CacheUpdateDTO cacheUpdateDTO = new CacheUpdateDTO();
             cacheUpdateDTO.setCacheType(CacheConst.VALUE_TYPE_POJO);
             cacheUpdateDTO.setKey(cacheKey);
             cacheUpdateDTO.setValue(postSearchVO);
             cacheUpdateDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-            cacheUpdateDTO.setDuration(Duration.ofMinutes(30L));
             rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_UPDATE_KEY, cacheUpdateDTO);
         }
 

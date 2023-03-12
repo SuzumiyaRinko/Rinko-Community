@@ -1,6 +1,7 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import suzumiya.model.dto.MessageDeleteDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.dto.MessageSelectDTO;
@@ -11,7 +12,7 @@ import suzumiya.model.vo.MessageSelectVO;
 public interface IMessageService extends IService<Message> {
 
     /* 发信息 */
-    void saveMessage(MessageInsertDTO messageInsertDTO);
+    void saveMessage(MessageInsertDTO messageInsertDTO) throws JsonProcessingException;
 
     /* 获取当前用户私信列表的总未读消息数 */
     Integer notReadCount(Long myUserId);

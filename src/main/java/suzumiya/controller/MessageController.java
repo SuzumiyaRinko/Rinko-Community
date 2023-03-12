@@ -1,5 +1,6 @@
 package suzumiya.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,7 +24,7 @@ public class MessageController {
     private IMessageService messageService;
 
     @PostMapping
-    public BaseResponse<Object> sendMessage(@RequestBody MessageInsertDTO messageInsertDTO) {
+    public BaseResponse<Object> sendMessage(@RequestBody MessageInsertDTO messageInsertDTO) throws JsonProcessingException {
         // 获取当前用户id
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         messageInsertDTO.setMyId(user.getId());

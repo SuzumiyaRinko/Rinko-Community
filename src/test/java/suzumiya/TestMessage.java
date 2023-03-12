@@ -1,5 +1,6 @@
 package suzumiya;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -22,7 +23,7 @@ public class TestMessage {
     private IMessageService messageService;
 
     @Test
-    void testSendMessage() {
+    void testSendMessage() throws JsonProcessingException {
         MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
         messageInsertDTO.setFromUserId(114514L);
         messageInsertDTO.setToUserId(1L);

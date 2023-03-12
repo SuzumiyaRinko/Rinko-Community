@@ -1,6 +1,7 @@
 package suzumiya;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.pagehelper.PageInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
@@ -144,7 +145,7 @@ public class TestMySQL {
     }
 
     @Test
-    void testSendMessage() {
+    void testSendMessage() throws JsonProcessingException {
         MessageInsertDTO messageInsertDTO = new MessageInsertDTO();
         messageInsertDTO.setContent("juejue");
         messageInsertDTO.setIsSystem(true);

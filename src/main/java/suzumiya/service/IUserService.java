@@ -1,6 +1,7 @@
 package suzumiya.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.web.multipart.MultipartFile;
 import suzumiya.model.dto.UserLoginDTO;
 import suzumiya.model.dto.UserRegisterDTO;
@@ -46,5 +47,5 @@ public interface IUserService extends IService<User> {
 
     String uploadAvatar(MultipartFile multipartFile) throws IOException;
 
-    void updateUserInfo(UserUpdateDTO userUpdateDTO);
+    void updateUserInfo(UserUpdateDTO userUpdateDTO) throws JsonProcessingException;
 }

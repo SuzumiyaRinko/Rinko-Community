@@ -2,6 +2,7 @@ package suzumiya.mq;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -146,7 +147,7 @@ public class MQConsumer {
             exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
             key = {MQConstant.MESSAGE_INSERT_KEY}
     ))
-    public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) {
+    public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) throws JsonProcessingException {
         /* 发送消息 */
         messageService.saveMessage(messageInsertDTO);
     }
