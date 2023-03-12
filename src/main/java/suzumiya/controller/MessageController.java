@@ -1,5 +1,6 @@
 package suzumiya.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import suzumiya.util.ResponseGenerator;
 
 @RestController
 @RequestMapping("/message")
+@Slf4j
 public class MessageController {
 
     @Autowired
@@ -48,6 +50,7 @@ public class MessageController {
         if (messageSelectDTO.getTargetId() == null) {
             messages = messageService.getMessages(messageSelectDTO);
         } else {
+            log.debug("MessageController.getMessages.messageSelectDTO: {}", messageSelectDTO);
             messages = messageService.getChatMessages(messageSelectDTO);
         }
         return ResponseGenerator.returnOK("消息查询成功", messages);

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
+@Slf4j
 public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> implements IMessageService {
 
     @Autowired
@@ -234,6 +236,8 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
     @Override
     public MessageSelectVO getChatMessages(MessageSelectDTO messageSelectDTO) {
+        log.debug("MessageServiceImpl.getChatMessages.messageSelectDTO: {}", messageSelectDTO);
+
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long myUserId = user.getId();
 

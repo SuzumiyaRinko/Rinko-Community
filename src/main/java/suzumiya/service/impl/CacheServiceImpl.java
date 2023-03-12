@@ -39,11 +39,11 @@ public class CacheServiceImpl implements ICacheService {
         Duration duration = cacheUpdateDTO.getDuration();
 
         // Caffeine
-//        if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
-//            userCache.put(key, value);
-//        } else {
-//            postCache.put(key, value);
-//        }
+        if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
+            userCache.put(key, value);
+        } else {
+            postCache.put(key, value);
+        }
 
         // Redis
         if (cacheType == CacheConst.VALUE_TYPE_SIMPLE) {
@@ -65,13 +65,13 @@ public class CacheServiceImpl implements ICacheService {
         if (caffeineType == CacheConst.CAFFEINE_TYPE_USER) {
             while (cursor.hasNext()) {
                 String cacheKey = cursor.next();
-//                userCache.invalidate(cacheKey);
+                userCache.invalidate(cacheKey);
                 redisTemplate.delete(cacheKey);
             }
         } else {
             while (cursor.hasNext()) {
                 String cacheKey = cursor.next();
-//                postCache.invalidate(cacheKey);
+                postCache.invalidate(cacheKey);
                 redisTemplate.delete(cacheKey);
             }
         }

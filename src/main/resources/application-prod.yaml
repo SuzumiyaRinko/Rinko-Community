@@ -44,6 +44,10 @@ logging:
     suzumiya.aspect.ControllerAspect: debug
     suzumiya.controller.WSChatController: debug
     suzumiya.service.impl.UserServiceImpl: debug
+    suzumiya.service.impl.PostController: debug
+    suzumiya.service.impl.MessageController: debug
+    suzumiya.service.impl.MessageServiceImpl: debug
+    suzumiya.service.impl.PostServiceImpl: debug
     suzumiya.mq.MQConsumer: debug
     suzumiya.job: debug
 #  pattern:

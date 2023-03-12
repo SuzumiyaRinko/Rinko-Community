@@ -6,7 +6,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import suzumiya.constant.CacheConst;
-import suzumiya.job.AnonymousUserClearJob;
 import suzumiya.job.PostScoreUpdateJob;
 import suzumiya.job.TableLogicDataClearJob;
 import suzumiya.mapper.UserMapper;
@@ -57,8 +56,9 @@ public class Application {
         QuartzUtils.addjob("tableLogicDataClearJob", "tableLogicDataClearJobGroup", null,
                 "tableLogicDataClearJobTrigger", "tableLogicDataClearJobTriggerGroup", "0 0 3 1/15 * ?", TableLogicDataClearJob.class);
         // 定时清除匿名用户（5天一次, 凌晨3点开始）
-        QuartzUtils.addjob("anonymousUserClearJob", "anonymousUserClearJobGroup", null,
-                "anonymousUserClearJobTrigger", "anonymousUserClearJobTriggerGroup", "0 0 3 1/5 * ?", AnonymousUserClearJob.class);
+        // 匿名用户不能被清除, 否则根据postUserId查询的用户为null, 会出问题
+//        QuartzUtils.addjob("anonymousUserClearJob", "anonymousUserClearJobGroup", null,
+//                "anonymousUserClearJobTrigger", "anonymousUserClearJobTriggerGroup", "0 0 3 1/5 * ?", AnonymousUserClearJob.class);
 
         System.out.println("api started successfully.");
     }

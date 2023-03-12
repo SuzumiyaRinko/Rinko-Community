@@ -1,5 +1,6 @@
 package suzumiya.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.PostInsertDTO;
@@ -14,6 +15,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/post")
+@Slf4j
 public class PostController {
 
     @Autowired
@@ -39,6 +41,7 @@ public class PostController {
 
     @GetMapping("/search")
     public BaseResponse<PostSearchVO> search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
+        log.debug("PostController.search.postSearchDTO: {}", postSearchDTO);
         PostSearchVO postSearchVO = postService.search(postSearchDTO);
         return ResponseGenerator.returnOK("查询post成功", postSearchVO);
     }

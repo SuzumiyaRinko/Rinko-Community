@@ -3,9 +3,7 @@ package suzumiya.aspect;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,7 +23,7 @@ public class ControllerAspect {
     }
 
     /* 统一打印日志 */
-    @Before("controllerPointcut()")
+//    @Before("controllerPointcut()")
     public void log(JoinPoint joinPoint) {
         String time = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now());
 
@@ -36,7 +34,7 @@ public class ControllerAspect {
     }
 
     /* 记录请求共消耗的时间 */
-    @Around("controllerPointcut()")
+//    @Around("controllerPointcut()")
     public BaseResponse recordCost(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
         BaseResponse response = (BaseResponse) joinPoint.proceed(); // 异常统一由GlobalExceptionHandler处理

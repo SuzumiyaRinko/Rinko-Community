@@ -9,6 +9,7 @@ import cn.hutool.http.HtmlUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
+import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.common.lucene.search.function.CombineFunction;
 import org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
 import org.elasticsearch.index.query.BoolQueryBuilder;
@@ -58,6 +59,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
 
     @Autowired
@@ -276,6 +278,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {
+        log.debug("PostServiceImpl.search.postSearchDTO: {}", postSearchDTO);
+
         PostSearchVO postSearchVO = new PostSearchVO();
 
         String searchKey = postSearchDTO.getSearchKey();
@@ -319,6 +323,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             Map<Object, Object> t = redisTemplate.opsForHash().entries(cacheKey);
             if (ObjectUtil.isNotEmpty(t)) {
                 postSearchVO.setTotal((Integer) t.get("total"));
+                log.debug("search.redis.postSearchVO: {}, pageNum: {}", postSearchVO, pageNum);
                 Collection<Post> collect = (Collection<Post>) ((Collection) t.get("data")).stream().map((postMap) -> {
                     Post post = new Post();
                     BeanUtil.fillBeanWithMap((Map<?, ?>) postMap, post, null);
