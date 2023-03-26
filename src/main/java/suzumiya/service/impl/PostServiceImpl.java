@@ -50,7 +50,6 @@ import suzumiya.service.IPostService;
 import suzumiya.service.IUserService;
 import suzumiya.util.IKAnalyzerUtils;
 import suzumiya.util.RedisUtils;
-import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Field;
@@ -111,8 +110,11 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         Post post = new Post();
 
         /* 过滤敏感词 */
-        post.setTitle(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
-        post.setContent(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
+//        post.setTitle(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getTitle()));
+//        post.setContent(SuzumiyaUtils.replaceAllSensitiveWords(postInsertDTO.getContent()));
+
+        post.setTitle(postInsertDTO.getTitle());
+        post.setContent(postInsertDTO.getContent());
 
         /* 清除HTML标记 */
         post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
@@ -133,6 +135,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             }
         }
         post.setTags(tags);
+
         // picturesSplit转pictures
         String[] picturesSpilt = postInsertDTO.getPicturesSplit();
         if (ObjectUtil.isNotEmpty(picturesSpilt)) {
@@ -221,60 +224,77 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
     }
 
-//    public void update(PostUpdateDTO postUpdateDTO) {
-//        /* 判断标题和内容长度 */
-//        String title = postUpdateDTO.getTitle();
-//        if (title.length() < 5 || title.length() > 40 || postUpdateDTO.getContent().length() > 5000) {
-//            throw new RuntimeException("标题或内容长度不符合要求");
-//        }
-//
-//        /* 过滤敏感词 */
-//        Post post = new Post();
-//        post.setTitle(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getTitle()));
-//        post.setContent(WordTreeUtils.replaceAllSensitiveWords(postUpdateDTO.getContent()));
-//
-//        /* 清除HTML标记 */
-////        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
-////        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
-//
-//        /* 在MySQL中更新post */
-//        post.setId(postUpdateDTO.getPostId());
-//
-//        List<Integer> tagIDs = postUpdateDTO.getTagIDs();
-//        int tags = 0;
-//        if (ObjectUtil.isNotEmpty(tagIDs)) {
-//            for (Integer tagID : tagIDs) {
-//                tags += Math.pow(2, tagID - 1);
-//            }
-//        }
-//        post.setTags(tags);
-//
-//        post.setTitle(postUpdateDTO.getTitle());
-//        post.setContent(postUpdateDTO.getContent());
-//        post.setTagIDs(postUpdateDTO.getTagIDs());
-//        int result = postMapper.updateById(post);
-//        if (result == 0) {
-//            throw new RuntimeException("该帖子不存在");
-//        }
-//
-//        /* 在ES中更新post */
-//        Optional<Post> optional = postRepository.findById(post.getId());
-//        if (optional.isEmpty()) {
-//            throw new RuntimeException("该帖子不存在");
-//        }
-//
-//        Post t = optional.get();
-//        t.setTitle(post.getTitle());
-//        t.setContent(post.getContent());
-//        t.setTagIDs(post.getTagIDs());
-//        postRepository.save(t);
-//
-//        /* 清除post缓存（异步） */
-//        CacheClearDTO cacheClearDTO = new CacheClearDTO();
-//        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
-//        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-//        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
-//    }
+    public void update(PostUpdateDTO postUpdateDTO) {
+        /* 判断标题和内容长度 */
+        String title = postUpdateDTO.getTitle();
+        if (title.length() < 5 || title.length() > 40 || postUpdateDTO.getContent().length() > 5000) {
+            throw new RuntimeException("标题或内容长度不符合要求");
+        }
+
+        Post post = new Post();
+
+        /* 过滤敏感词 */
+//        post.setTitle(SuzumiyaUtils.replaceAllSensitiveWords(postUpdateDTO.getTitle()));
+//        post.setContent(SuzumiyaUtils.replaceAllSensitiveWords(postUpdateDTO.getContent()));
+
+        post.setTitle(postUpdateDTO.getTitle());
+        post.setContent(postUpdateDTO.getContent());
+
+        /* 清除HTML标记 */
+        post.setTitle(HtmlUtil.cleanHtmlTag(post.getTitle()));
+        post.setContent(HtmlUtil.cleanHtmlTag(post.getContent()));
+
+        /* 换行符转换 */
+        post.setTitle(post.getTitle().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
+        post.setContent(post.getContent().replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
+
+        /* picturesSplit转pictures */
+        String[] picturesSpilt = postUpdateDTO.getPicturesSplit();
+        if (ObjectUtil.isNotEmpty(picturesSpilt)) {
+            post.setPicturesSplit(picturesSpilt);
+        } else {
+            post.setPicturesSplit(new String[0]);
+        }
+        String pictures = StrUtil.join("|", picturesSpilt);
+        post.setPictures(pictures);
+
+        /* tagIDs转tags */
+        List<Integer> tagIDs = postUpdateDTO.getTagIDs();
+        int tags = 0;
+        if (ObjectUtil.isNotEmpty(tagIDs)) {
+            for (Integer tagID : tagIDs) {
+                tags += Math.pow(2, tagID - 1);
+            }
+        }
+        post.setTags(tags);
+
+        /* 在MySQL中更新post */
+        post.setId(postUpdateDTO.getPostId());
+        int result = postMapper.updateById(post);
+        if (result == 0) {
+            throw new RuntimeException("该帖子不存在");
+        }
+
+        /* 在ES中更新post */
+        Optional<Post> optional = postRepository.findById(post.getId());
+        if (optional.isEmpty()) {
+            throw new RuntimeException("该帖子不存在");
+        }
+
+        Post t = optional.get();
+        t.setTitle(post.getTitle());
+        t.setContent(post.getContent());
+        t.setTagIDs(post.getTagIDs());
+        t.setPictures(post.getPictures());
+        t.setPicturesSplit(post.getPicturesSplit());
+        postRepository.save(t);
+
+        /* 清除post缓存（异步） */
+        CacheClearDTO cacheClearDTO = new CacheClearDTO();
+        cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
+        cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
+        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+    }
 
     @Override
     public PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException {

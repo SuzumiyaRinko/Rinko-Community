@@ -2,6 +2,7 @@ package suzumiya.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import suzumiya.model.dto.UserLoginDTO;
@@ -59,6 +60,7 @@ public class UserController {
         userService.activate(uuid, response);
     }
 
+    @PreAuthorize("hasAnyAuthority('sys:user:all', 'sys:user:follow')")
     @PostMapping("/follow/{targetId}")
     public BaseResponse<Object> follow(@PathVariable("targetId") Long targetId) {
         /* 关注 / 取消关注 */

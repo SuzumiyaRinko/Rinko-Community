@@ -190,7 +190,15 @@ public class TestMySQL {
     }
 
     @Test
-    void testCommonConst() {
+    void test0() {
+        User user = userMapper.getSimpleUserById(16L);
+//        System.out.println(user);
+        List<User> users = userMapper.selectList(null);
+        System.out.println(users);
+    }
 
+    @Test
+    void test1() {
+        userMapper.setRoles4UserId(114514L, List.of(1, 2, 3));
     }
 }

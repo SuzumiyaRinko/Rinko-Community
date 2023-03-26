@@ -3,6 +3,7 @@ package suzumiya.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import suzumiya.model.dto.MessageDeleteDTO;
@@ -24,6 +25,7 @@ public class MessageController {
     private IMessageService messageService;
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('sys:message:all', 'sys:message:insert')")
     public BaseResponse<Object> sendMessage(@RequestBody MessageInsertDTO messageInsertDTO) throws JsonProcessingException {
         // 获取当前用户id
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -46,6 +48,7 @@ public class MessageController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('sys:message:all', 'sys:message:select')")
     public BaseResponse<MessageSelectVO> getMessages(MessageSelectDTO messageSelectDTO) {
         MessageSelectVO messages;
         if (messageSelectDTO.getTargetId() == null) {

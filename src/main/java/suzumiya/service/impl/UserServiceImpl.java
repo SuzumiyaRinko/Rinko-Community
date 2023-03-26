@@ -36,7 +36,6 @@ import suzumiya.model.vo.FollowingSelectVO;
 import suzumiya.model.vo.UserInfoVo;
 import suzumiya.service.IFileService;
 import suzumiya.service.IUserService;
-import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletResponse;
@@ -115,7 +114,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             throw new RuntimeException("账号或密码错误");
         }
 
-
         /* 查询用户权限 */
         User authenticatedUser = (User) authentication.getPrincipal();
         List<String> authoritiesStr = userMapper.getAuthoritiesStrByUserId(authenticatedUser.getId());
@@ -148,6 +146,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         newUser.setActivation(2);
         newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
         userMapper.insert(newUser);
+
+        /* 设置角色 */
+        userMapper.setRoles4UserId(newUser.getId(), List.of(5));
+
+        /* 查询用户权限 */
+        List<String> authoritiesStr = userMapper.getAuthoritiesStrByUserId(newUser.getId());
+        newUser.setAuthoritiesStr(authoritiesStr);
 
         /* 把用户信息存放到Redis中，TTL为30mins */
         String key = RedisConst.LOGIN_USER_KEY + newUser.getId();
@@ -219,6 +224,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         newUser.setNickname("user_" + uuid.substring(0, 8));
         newUser.setAvatar(CommonConst.DEFAULT_AVATAR);
         userMapper.insert(newUser);
+
+        /* 设置角色 */
+        userMapper.setRoles4UserId(newUser.getId(), List.of(4));
 
         /* 30mins激活时间（异步） */
         /* 发送邮件到用户邮箱（异步） */
@@ -439,7 +447,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         /* 过滤敏感词 */
-        userUpdateDTO.setNickname(SuzumiyaUtils.replaceAllSensitiveWords(userUpdateDTO.getNickname()));
+//        userUpdateDTO.setNickname(SuzumiyaUtils.replaceAllSensitiveWords(userUpdateDTO.getNickname()));
 
         /* 存储至MySQL */
         User user = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();

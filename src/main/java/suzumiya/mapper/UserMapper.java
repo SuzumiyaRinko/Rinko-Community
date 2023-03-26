@@ -27,6 +27,8 @@ public interface UserMapper extends BaseMapper<User> {
     @Select("SELECT role_id FROM sys_user_role WHERE user_id = #{userId}")
     List<Integer> getRolesByUserId(@Param("userId") Long userId);
 
+    void setRoles4UserId(@Param("userId") Long userId, @Param("roles") List<Integer> roles);
+
     @Select("SELECT id FROM sys_user WHERE is_delete = 0")
     List<Long> getAllUserId();
 

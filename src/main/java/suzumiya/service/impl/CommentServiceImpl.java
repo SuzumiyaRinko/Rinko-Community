@@ -30,7 +30,6 @@ import suzumiya.model.pojo.Post;
 import suzumiya.model.pojo.User;
 import suzumiya.service.ICommentService;
 import suzumiya.service.IUserService;
-import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.util.List;
@@ -69,7 +68,9 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
         Comment comment = new Comment();
 
         /* 过滤敏感词 */
-        comment.setContent(SuzumiyaUtils.replaceAllSensitiveWords(commentInsertDTO.getContent()));
+//        comment.setContent(SuzumiyaUtils.replaceAllSensitiveWords(commentInsertDTO.getContent()));
+
+        comment.setContent(commentInsertDTO.getContent());
 
         /* 清除HTML标记 */
         comment.setContent(HtmlUtil.cleanHtmlTag(comment.getContent()));

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import suzumiya.model.dto.PostInsertDTO;
 import suzumiya.model.dto.PostSearchDTO;
+import suzumiya.model.dto.PostUpdateDTO;
 import suzumiya.model.pojo.Post;
 import suzumiya.model.vo.PostSearchVO;
 
@@ -19,7 +20,7 @@ public interface IPostService extends IService<Post> {
     void delete(Long postId);
 
     /* 更新 */
-//    void update(PostUpdateDTO postUpdateDTO);
+    void update(PostUpdateDTO postUpdateDTO) throws JsonProcessingException;
 
     /* 查询 */
     PostSearchVO search(PostSearchDTO postSearchDTO) throws NoSuchFieldException, IllegalAccessException;

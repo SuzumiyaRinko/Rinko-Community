@@ -125,7 +125,7 @@ public class MQConsumer {
         /* 构建或刷新Caffeine和Redis缓存 */
         cacheService.updateCache(cacheUpdateDTO);
 
-        log.debug("构建或刷新Caffeine和Redis缓存");
+//        log.debug("构建或刷新Caffeine和Redis缓存");
     }
 
     /* 监听Cache清除接口 */

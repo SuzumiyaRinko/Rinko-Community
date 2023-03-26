@@ -30,7 +30,6 @@ import suzumiya.model.vo.MessageSelectVO;
 import suzumiya.service.IMessageService;
 import suzumiya.service.IUserService;
 import suzumiya.util.RedisUtils;
-import suzumiya.util.SuzumiyaUtils;
 
 import javax.annotation.Resource;
 import java.util.ArrayList;
@@ -121,7 +120,7 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
 
             if (StrUtil.isNotBlank(content)) {
                 /* 过滤敏感词 */
-                content = SuzumiyaUtils.replaceAllSensitiveWords(content);
+//                content = SuzumiyaUtils.replaceAllSensitiveWords(content);
                 /* 清除HTML标记 */
                 content = HtmlUtil.cleanHtmlTag(messageInsertDTO.getContent());
                 /* 换行符转换 */

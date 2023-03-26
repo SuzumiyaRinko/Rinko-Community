@@ -42,4 +42,12 @@
         </foreach>
         AND is_delete = 0
     </select>
+
+    <!-- void setRoles4UserId(@Param("userId") Long userId, @Param("roles") List<Integer> roles) -->
+    <insert id="setRoles4UserId">
+        INSERT INTO sys_user_role(user_id, role_id) VALUES
+        <foreach collection="roles" item="role" separator=",">
+            (#{userId}, #{role})
+        </foreach>
+    </insert>
 </mapper>
