@@ -11,3 +11,6 @@ server:
   servlet:
     session:
       tracking-modes: cookie
+
+commons:
+  cluster-node: -1

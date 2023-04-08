@@ -28,12 +28,11 @@ import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @ServerEndpoint("/wsChat/{myUserId}")
 @Component
-@Scope("protocol")
+@Scope("prototype")
 @Slf4j
 public class WSChatController {
 
@@ -61,7 +60,7 @@ public class WSChatController {
     }
 
     // 记录所有当前在线连接
-    private static Map<Long, Session> sessionMap = new ConcurrentHashMap<>();
+    public static Map<Long, Session> sessionMap = new ConcurrentHashMap<>();
 
     // 连接创建时被调用
     @OnOpen
@@ -69,6 +68,7 @@ public class WSChatController {
         // 将当前用户存储在容器中
         sessionMap.put(myUserId, session);
 
+        log.debug("ws连接, userId={}, 当前人数: {}", myUserId, sessionMap.size());
         log.debug("ws连接, userId={}, 当前人数: {}", myUserId, sessionMap.size());
     }
 
@@ -116,32 +116,7 @@ public class WSChatController {
             message.setContent(content.replaceAll(CommonConst.REPLACEMENT_ENTER, "<br>"));
         }
 
-        if (toUserId > 0) {
-            /* 私信 */
-            Session toSession = sessionMap.get(toUserId);
-            if (toSession != null) {
-                toSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
-            }
-        } else if (toUserId == 0) {
-            /* 公共聊天室 */
-            Set<Map.Entry<Long, Session>> entrySet = sessionMap.entrySet();
-            for (Map.Entry<Long, Session> entry : entrySet) {
-                Long userId = entry.getKey();
-                Session tmpSession = entry.getValue();
-                // 不用发给自己
-                if (!userId.equals(myUserId)) {
-                    // 设置消息unreadCount
-                    Object o = redisTemplate.opsForHash().get(RedisConst.USER_UNREAD_KEY + userId, "0");
-                    if (o != null) {
-                        message.setUnreadCount((Integer) o);
-                    } else {
-                        message.setUnreadCount(0);
-                    }
-                    tmpSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
-                }
-            }
-        }
-
+        rabbitTemplate.convertAndSend(MQConstant.WS_FANOUT, "", message);
     }
 
     // 连接关闭时被调用

@@ -1,6 +1,17 @@
 package suzumiya.constant;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
 public class MQConstant {
+
+    public static String clusterNode;
+
+    @Value("${commons.cluster-node}")
+    public void setClusterNode(String clusterNode) {
+        MQConstant.clusterNode = clusterNode;
+    }
 
     /* 延时队列 */
     public static final String DELAY_DIRECT = "delay.direct";
@@ -34,15 +45,22 @@ public class MQConstant {
     // 更新缓存
     public static final String CACHE_UPDATE_QUEUE = "cache.update.queue";
     public static final String CACHE_UPDATE_KEY = "cache.update";
+    // 缓存交换机
+    public static final String CACHE_CLEAR_FANOUT = "cache.clear.fanout";
     // 删除缓存
-    public static final String CACHE_CLEAR_QUEUE = "cache.clear.queue";
-    public static final String CACHE_CLEAR_KEY = "cache.clear";
+    public static final String CACHE_CLEAR_QUEUE = "cache.clear.queue." + clusterNode;
+    public static final String CACHE_CLEAR_KEY = "cache.clear." + clusterNode;
 
     /* Message */
-    // 发送消息
+    // 发送系统消息
     public static final String MESSAGE_INSERT_QUEUE = "message.insert.queue";
     public static final String MESSAGE_INSERT_KEY = "message.insert";
     // 公共聊天室未读数量
     public static final String MESSAGE_PUBLIC_UNREAD_QUEUE = "message.public.unread.queue";
     public static final String MESSAGE_PUBLIC_UNREAD_KEY = "message.public.unread";
+    // ws交换机
+    public static final String WS_FANOUT = "ws.fanout";
+    // 发送ws消息
+    public static final String WS_QUEUE = "ws.queue." + clusterNode;
+    public static final String WS_KEY = "ws." + clusterNode;
 }

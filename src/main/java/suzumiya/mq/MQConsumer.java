@@ -3,6 +3,7 @@ package suzumiya.mq;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
@@ -19,6 +20,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import suzumiya.constant.CommonConst;
 import suzumiya.constant.MQConstant;
 import suzumiya.constant.RedisConst;
+import suzumiya.controller.WSChatController;
 import suzumiya.mapper.CommentMapper;
 import suzumiya.mapper.MessageMapper;
 import suzumiya.mapper.PostMapper;
@@ -27,6 +29,7 @@ import suzumiya.model.dto.CacheClearDTO;
 import suzumiya.model.dto.CacheUpdateDTO;
 import suzumiya.model.dto.MessageInsertDTO;
 import suzumiya.model.dto.UserUnfollowDTO;
+import suzumiya.model.pojo.Message;
 import suzumiya.model.pojo.User;
 import suzumiya.repository.PostRepository;
 import suzumiya.service.ICacheService;
@@ -36,8 +39,10 @@ import suzumiya.util.TestFTPUtils;
 
 import javax.annotation.Resource;
 import javax.mail.MessagingException;
+import javax.websocket.Session;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -45,6 +50,9 @@ import java.util.stream.Collectors;
 @Configuration
 @Slf4j
 public class MQConsumer {
+
+    @Resource
+    private ObjectMapper objectMapper;
 
     @Autowired
     private ICacheService cacheService;
@@ -130,9 +138,9 @@ public class MQConsumer {
 
     /* 监听Cache清除接口 */
     @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = MQConstant.CACHE_CLEAR_QUEUE),
-            exchange = @Exchange(name = MQConstant.SERVICE_DIRECT, type = ExchangeTypes.DIRECT, delayed = "true"),
-            key = {MQConstant.CACHE_CLEAR_KEY}
+            value = @Queue(name = "cache.clear.queue.${commons.cluster-node}"),
+            exchange = @Exchange(name = MQConstant.CACHE_CLEAR_FANOUT, type = ExchangeTypes.FANOUT, delayed = "true"),
+            key = {"cache.clear.${commons.cluster-node}"}
     ))
     public void listenCacheClearQueue(CacheClearDTO cacheClearDTO) {
         /* 清除Caffeine和Redis缓存 */
@@ -150,6 +158,42 @@ public class MQConsumer {
     public void listenMessageInsertQueue(MessageInsertDTO messageInsertDTO) throws JsonProcessingException {
         /* 发送消息 */
         messageService.saveMessage(messageInsertDTO);
+    }
+
+    /* 监听WsMessage发送接口 */
+    @RabbitListener(bindings = @QueueBinding(
+            value = @Queue(name = "ws.queue.${commons.cluster-node}"),
+            exchange = @Exchange(name = MQConstant.WS_FANOUT, type = ExchangeTypes.FANOUT, delayed = "true"),
+            key = {"ws.${commons.cluster-node}"}
+    ))
+    public void listenWsQueue(Message message) throws JsonProcessingException {
+        Long myUserId = message.getFromUserId();
+        Long toUserId = message.getToUserId();
+        if (toUserId > 0) {
+            /* 私信 */
+            Session toSession = WSChatController.sessionMap.get(toUserId);
+            if (toSession != null) {
+                toSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
+            }
+        } else if (toUserId == 0) {
+            /* 公共聊天室 */
+            Set<Map.Entry<Long, Session>> entrySet = WSChatController.sessionMap.entrySet();
+            for (Map.Entry<Long, Session> entry : entrySet) {
+                Long userId = entry.getKey();
+                Session tmpSession = entry.getValue();
+                // 不用发给自己
+                if (!userId.equals(myUserId)) {
+                    // 设置消息unreadCount
+                    Object o = redisTemplate.opsForHash().get(RedisConst.USER_UNREAD_KEY + userId, "0");
+                    if (o != null) {
+                        message.setUnreadCount((Integer) o);
+                    } else {
+                        message.setUnreadCount(0);
+                    }
+                    tmpSession.getAsyncRemote().sendText(objectMapper.writeValueAsString(message));
+                }
+            }
+        }
     }
 
     /* 监听Post删除接口 */

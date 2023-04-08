@@ -33,7 +33,7 @@ public class FTPUtils {
 
     @PostConstruct
     public void init() {
-        System.out.println("FTP_ADDRESS: " + FTP_ADDRESS);
+//        System.out.println("FTP_ADDRESS: " + FTP_ADDRESS);
         try {
             ftpClient.connect(FTP_ADDRESS, FTP_PORT);
             ftpClient.login(FTP_USERNAME, FTP_PASSWORD);
