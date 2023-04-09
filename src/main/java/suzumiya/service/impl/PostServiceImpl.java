@@ -167,7 +167,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         CacheClearDTO cacheClearDTO = new CacheClearDTO();
         cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+        rabbitTemplate.convertAndSend(MQConstant.CACHE_CLEAR_FANOUT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
 
         /* 发送系统消息（异步） */
         Set<Object> members = redisTemplate.opsForSet().members(RedisConst.USER_FOLLOWER_KEY + myId);
@@ -218,7 +218,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         CacheClearDTO cacheClearDTO = new CacheClearDTO();
         cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+        rabbitTemplate.convertAndSend(MQConstant.CACHE_CLEAR_FANOUT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
 
         /* 删除相关comment */
         rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.POST_DELETE_KEY, postId);
@@ -293,7 +293,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         CacheClearDTO cacheClearDTO = new CacheClearDTO();
         cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
         cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-        rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+        rabbitTemplate.convertAndSend(MQConstant.CACHE_CLEAR_FANOUT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
     }
 
     @Override

@@ -89,7 +89,7 @@ public class PostScoreUpdateJob extends QuartzJobBean {
             CacheClearDTO cacheClearDTO = new CacheClearDTO();
             cacheClearDTO.setKeyPattern(CacheConst.CACHE_POST_KEY_PATTERN);
             cacheClearDTO.setCaffeineType(CacheConst.CAFFEINE_TYPE_POST);
-            rabbitTemplate.convertAndSend(MQConstant.SERVICE_DIRECT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
+            rabbitTemplate.convertAndSend(MQConstant.CACHE_CLEAR_FANOUT, MQConstant.CACHE_CLEAR_KEY, cacheClearDTO);
         }
 
         log.debug("为post列表刷新score完成");
