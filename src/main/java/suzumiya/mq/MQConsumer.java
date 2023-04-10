@@ -138,9 +138,9 @@ public class MQConsumer {
 
     /* 监听Cache清除接口 */
     @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = "cache.clear.queue.${commons.cluster-node}"),
+            value = @Queue(name = "cache.clear.queue.${commons.clusterNode}"),
             exchange = @Exchange(name = MQConstant.CACHE_CLEAR_FANOUT, type = ExchangeTypes.FANOUT, delayed = "true"),
-            key = {"cache.clear.${commons.cluster-node}"}
+            key = {"cache.clear.${commons.clusterNode}"}
     ))
     public void listenCacheClearQueue(CacheClearDTO cacheClearDTO) {
         /* 清除Caffeine和Redis缓存 */
@@ -162,9 +162,9 @@ public class MQConsumer {
 
     /* 监听WsMessage发送接口 */
     @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name = "ws.queue.${commons.cluster-node}"),
+            value = @Queue(name = "ws.queue.${commons.clusterNode}"),
             exchange = @Exchange(name = MQConstant.WS_FANOUT, type = ExchangeTypes.FANOUT, delayed = "true"),
-            key = {"ws.${commons.cluster-node}"}
+            key = {"ws.${commons.clusterNode}"}
     ))
     public void listenWsQueue(Message message) throws JsonProcessingException {
         Long myUserId = message.getFromUserId();

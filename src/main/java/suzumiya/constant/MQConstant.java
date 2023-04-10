@@ -8,7 +8,7 @@ public class MQConstant {
 
     public static String clusterNode;
 
-    @Value("${commons.cluster-node}")
+    @Value("${commons.clusterNode}")
     public void setClusterNode(String clusterNode) {
         MQConstant.clusterNode = clusterNode;
     }

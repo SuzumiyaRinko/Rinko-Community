@@ -73,3 +73,6 @@ url:
 
 quartz:
   config-path: myQuartz_prod.properties
+
+commons:
+  clusterNode: -1

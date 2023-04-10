@@ -13,4 +13,6 @@ server:
       tracking-modes: cookie
 
 commons:
-  cluster-node: -1
+  clusterNode: -1
+
+testStr: a

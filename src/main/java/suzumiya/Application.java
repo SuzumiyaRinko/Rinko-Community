@@ -2,6 +2,7 @@ package suzumiya;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
@@ -31,6 +32,20 @@ public class Application {
         Application.userCache = userCache;
     }
 
+    public static String clusterNode;
+
+    @Value("${commons.clusterNode}")
+    public void setClusterNode(String clusterNode) {
+        Application.clusterNode = clusterNode;
+    }
+
+    public static String testStr;
+
+    @Value("${testStr}")
+    public void setTestStr(String testStr) {
+        Application.testStr = testStr;
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
 
@@ -58,5 +73,7 @@ public class Application {
 //                "anonymousUserClearJobTrigger", "anonymousUserClearJobTriggerGroup", "0 0 3 1/5 * ?", AnonymousUserClearJob.class);
 
         System.out.println("api started successfully.");
+        System.out.println("clusterNode: " + clusterNode);
+        System.out.println("testStr: " + testStr);
     }
 }
